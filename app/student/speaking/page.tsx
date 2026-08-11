@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -16,14 +16,14 @@ type Analysis = {
   grammar_score: number;
   fluency_score: number;
   overall_score: number;
-  correct_sentence: string;
+  corrected_sentence: string;
   grammar_correction: string;
   grammar_explanation: string;
   vocabulary_suggestion: string;
   feedback: string;
 };
 
-export default function SpeakingPracticePage() {
+function SpeakingPracticeContent() {
   const searchParams = useSearchParams();
 
   const lessonId =
@@ -56,14 +56,6 @@ export default function SpeakingPracticePage() {
   const [lessonCompleted, setLessonCompleted] =
     useState(false);
 
-  const MAX_ANALYSES_PER_LESSON = 5;
-
-  const [analysisCount, setAnalysisCount] =
-    useState(0);
-
-  const [checkingLimit, setCheckingLimit] =
-    useState(true);
-
   // =========================================
   // CHECK MICROPHONE
   // =========================================
@@ -76,9 +68,7 @@ export default function SpeakingPracticePage() {
     ) {
       setSupported(false);
     }
-
-    checkAnalysisLimit();
-  }, [lessonId]);
+  }, []);
 
   // =========================================
   // START RECORDING
@@ -315,81 +305,10 @@ export default function SpeakingPracticePage() {
   }
 
   // =========================================
-  // CHECK SPEECH ANALYSIS LIMIT
-  // =========================================
-
-  async function checkAnalysisLimit() {
-    if (!lessonId) {
-      setCheckingLimit(false);
-      return;
-    }
-
-    try {
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
-
-      if (authError || !authData.user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const { data: student, error: studentError } =
-        await supabase
-          .from("students")
-          .select("id")
-          .eq("auth_user_id", authData.user.id)
-          .single();
-
-      if (studentError || !student) {
-        setErrorMessage(
-          "Student information could not be found."
-        );
-        setCheckingLimit(false);
-        return;
-      }
-
-      const { count, error: countError } =
-        await supabase
-          .from("speech_analysis")
-          .select("id", { count: "exact", head: true })
-          .eq("student_id", student.id)
-          .eq("lesson_id", lessonId);
-
-      if (countError) {
-        console.error("Analysis count error:", countError);
-        setErrorMessage(
-          "Unable to check speech analysis attempts."
-        );
-        setCheckingLimit(false);
-        return;
-      }
-
-      setAnalysisCount(count || 0);
-    } catch (error) {
-      console.error("Check analysis limit error:", error);
-      setErrorMessage(
-        "Unable to check speech analysis attempts."
-      );
-    } finally {
-      setCheckingLimit(false);
-    }
-  }
-
-  // =========================================
   // ANALYZE SPEECH
   // =========================================
 
   async function analyzeSpeech() {
-    if (
-      lessonId &&
-      analysisCount >= MAX_ANALYSES_PER_LESSON
-    ) {
-      setErrorMessage(
-        "You have used all 5 AI speech analysis attempts for this lesson."
-      );
-      return;
-    }
-
     if (!audioBlob) {
       setErrorMessage(
         "Please record your speech first."
@@ -540,10 +459,9 @@ export default function SpeakingPracticePage() {
                 0
             ),
 
-          correct_sentence:
-            result.correct_sentence ||
-  result.corrected_sentence ||
-  "",
+          corrected_sentence:
+            result.corrected_sentence ||
+            "",
 
           grammar_correction:
             result.grammar_correction ||
@@ -596,8 +514,8 @@ export default function SpeakingPracticePage() {
             overall_score:
               finalAnalysis.overall_score,
 
-             correct_sentence:
-              finalAnalysis.correct_sentence,
+            corrected_sentence:
+              finalAnalysis.corrected_sentence,
 
             grammar_correction:
               finalAnalysis.grammar_correction,
@@ -623,8 +541,6 @@ export default function SpeakingPracticePage() {
             saveError.message
         );
       }
-
-      setAnalysisCount((previous) => previous + 1);
 
       // =====================================
       // MARK LESSON COMPLETED
@@ -738,7 +654,7 @@ export default function SpeakingPracticePage() {
               }
               className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
             >
-              ← Lesson
+              â† Lesson
             </button>
 
             <button
@@ -767,7 +683,7 @@ export default function SpeakingPracticePage() {
         <div className="text-center">
 
           <div className="text-6xl">
-            🎤
+            ðŸŽ¤
           </div>
 
           <h2 className="mt-5 text-3xl font-bold text-gray-900">
@@ -803,58 +719,11 @@ export default function SpeakingPracticePage() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected ✓
+              Lesson connected âœ“
             </p>
           )}
 
         </section>
-
-        {/* ================================= */}
-        {/* AI ANALYSIS ATTEMPT LIMIT */}
-        {/* ================================= */}
-
-        {lessonId && !checkingLimit && (
-          <section className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-500">
-                  AI Speech Analysis
-                </p>
-                <p className="mt-1 text-lg font-bold text-gray-900">
-                  {analysisCount} / {MAX_ANALYSES_PER_LESSON} attempts used
-                </p>
-              </div>
-
-              <span
-                className={`rounded-full px-4 py-2 text-sm font-bold ${
-                  analysisCount >= MAX_ANALYSES_PER_LESSON
-                    ? "bg-red-100 text-red-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
-              >
-                {analysisCount >= MAX_ANALYSES_PER_LESSON
-                  ? "Limit Reached"
-                  : `${MAX_ANALYSES_PER_LESSON - analysisCount} remaining`}
-              </span>
-            </div>
-
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-gray-200">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  analysisCount >= MAX_ANALYSES_PER_LESSON
-                    ? "bg-red-500"
-                    : "bg-blue-600"
-                }`}
-                style={{
-                  width: `${Math.min(
-                    100,
-                    (analysisCount / MAX_ANALYSES_PER_LESSON) * 100
-                  )}%`,
-                }}
-              />
-            </div>
-          </section>
-        )}
 
         {/* ================================= */}
         {/* ERROR */}
@@ -865,7 +734,7 @@ export default function SpeakingPracticePage() {
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
 
             <p className="font-semibold">
-              ⚠️ {errorMessage}
+              âš ï¸ {errorMessage}
             </p>
 
           </div>
@@ -887,7 +756,7 @@ export default function SpeakingPracticePage() {
           >
 
             <span className="text-6xl">
-              🎙️
+              ðŸŽ™ï¸
             </span>
 
           </div>
@@ -910,7 +779,7 @@ export default function SpeakingPracticePage() {
                 }
                 className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
               >
-                ⏹ Stop Recording
+                â¹ Stop Recording
               </button>
 
             </>
@@ -935,7 +804,7 @@ export default function SpeakingPracticePage() {
                 disabled={!supported}
                 className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                🎙 Start Recording
+                ðŸŽ™ Start Recording
               </button>
 
             </>
@@ -955,7 +824,7 @@ export default function SpeakingPracticePage() {
             <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <div className="text-5xl">
-                ✅
+                âœ…
               </div>
 
               <h3 className="mt-4 text-2xl font-bold text-gray-900">
@@ -971,20 +840,12 @@ export default function SpeakingPracticePage() {
                 onClick={
                   analyzeSpeech
                 }
-                disabled={
-                  analyzing ||
-                  checkingLimit ||
-                  (!!lessonId &&
-                    analysisCount >= MAX_ANALYSES_PER_LESSON)
-                }
+                disabled={analyzing}
                 className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing
-                  ? "🤖 Analyzing..."
-                  : lessonId &&
-                    analysisCount >= MAX_ANALYSES_PER_LESSON
-                  ? "🔒 5 Attempts Used"
-                  : "🤖 Analyze My Speech"}
+                  ? "ðŸ¤– Analyzing..."
+                  : "ðŸ¤– Analyze My Speech"}
               </button>
 
             </section>
@@ -1006,7 +867,7 @@ export default function SpeakingPracticePage() {
               <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
 
                 <div className="text-6xl">
-                  🎉
+                  ðŸŽ‰
                 </div>
 
                 <h3 className="mt-4 text-3xl font-bold text-green-700">
@@ -1039,7 +900,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📝 What You Said
+                ðŸ“ What You Said
               </h3>
 
               <div className="mt-5 rounded-xl bg-slate-50 p-6">
@@ -1058,14 +919,14 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✅ Correct Sentence
+                âœ… Correct Sentence
               </h3>
 
               <div className="mt-5 rounded-xl bg-green-50 p-6">
 
                 <p className="text-lg font-semibold leading-8 text-green-800">
-                  {analysis.correct_sentence ||
-  "No correction required."}
+                  {analysis.corrected_sentence ||
+                    "No correction required."}
                 </p>
 
               </div>
@@ -1077,7 +938,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✏️ Grammar Correction
+                âœï¸ Grammar Correction
               </h3>
 
               <div className="mt-5 rounded-xl bg-yellow-50 p-6">
@@ -1096,7 +957,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                💡 Grammar Explanation
+                ðŸ’¡ Grammar Explanation
               </h3>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-6">
@@ -1115,7 +976,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📚 Vocabulary Suggestion
+                ðŸ“š Vocabulary Suggestion
               </h3>
 
               <div className="mt-5 rounded-xl bg-purple-50 p-6">
@@ -1136,7 +997,7 @@ export default function SpeakingPracticePage() {
               <div className="text-center">
 
                 <h3 className="text-3xl font-bold text-gray-900">
-                  🤖 AI Speech Analysis
+                  ðŸ¤– AI Speech Analysis
                 </h3>
 
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
@@ -1158,28 +1019,28 @@ export default function SpeakingPracticePage() {
               </div>
 
               <ScoreBar
-                title="🗣️ Pronunciation"
+                title="ðŸ—£ï¸ Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title="📚 Vocabulary"
+                title="ðŸ“š Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title="✏️ Grammar"
+                title="âœï¸ Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title="💬 Fluency"
+                title="ðŸ’¬ Fluency"
                 score={
                   analysis.fluency_score
                 }
@@ -1192,7 +1053,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
               <h3 className="text-2xl font-bold">
-                🌟 AI Feedback
+                ðŸŒŸ AI Feedback
               </h3>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
@@ -1207,7 +1068,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                🎯 What would you like to do?
+                ðŸŽ¯ What would you like to do?
               </h3>
 
               <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -1218,7 +1079,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
                 >
-                  🎙 Try Again
+                  ðŸŽ™ Try Again
                 </button>
 
                 <button
@@ -1227,7 +1088,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
                 >
-                  ← Back to Lesson
+                  â† Back to Lesson
                 </button>
 
                 <button
@@ -1237,7 +1098,7 @@ export default function SpeakingPracticePage() {
                   }}
                   className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
                 >
-                  📊 View Progress
+                  ðŸ“Š View Progress
                 </button>
 
               </div>
@@ -1301,5 +1162,24 @@ function ScoreBar({
       </div>
 
     </div>
+  );
+}
+
+export default function SpeakingPracticePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-50">
+          <div className="text-center">
+            <div className="text-5xl">🎤</div>
+            <p className="mt-4 text-lg font-semibold text-gray-700">
+              Loading speaking practice...
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <SpeakingPracticeContent />
+    </Suspense>
   );
 }
