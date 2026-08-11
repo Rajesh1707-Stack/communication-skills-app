@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     const mimeType =
       audio.type ||
-      "audio/webm";
+      "audio/wav";
 
     console.log(
       "Sending audio to Gemini..."
