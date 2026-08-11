@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -43,12 +44,10 @@ type Analysis = {
   created_at: string;
 };
 
-export default function StudentDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function StudentDetailsPage() {
+  const params = useParams();
+
+  const id = String(params?.id || "");
 
   const [student, setStudent] =
     useState<Student | null>(null);
@@ -66,7 +65,9 @@ export default function StudentDetailsPage({
     useState("");
 
   useEffect(() => {
-    loadStudent();
+    if (id) {
+      loadStudent();
+    }
   }, [id]);
 
   // =========================================
@@ -78,7 +79,18 @@ export default function StudentDetailsPage({
       setLoading(true);
       setErrorMessage("");
 
+      if (!id) {
+        setErrorMessage(
+          "Student ID was not found."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      // =======================================
       // CHECK LOGIN
+      // =======================================
 
       const {
         data: authData,
@@ -90,7 +102,9 @@ export default function StudentDetailsPage({
         return;
       }
 
+      // =======================================
       // CHECK ADMIN
+      // =======================================
 
       const {
         data: profile,
@@ -112,7 +126,9 @@ export default function StudentDetailsPage({
         return;
       }
 
+      // =======================================
       // GET STUDENT
+      // =======================================
 
       const {
         data: studentData,
@@ -146,9 +162,20 @@ export default function StudentDetailsPage({
         return;
       }
 
+      if (!studentData) {
+        setErrorMessage(
+          "Student was not found."
+        );
+
+        setLoading(false);
+        return;
+      }
+
       setStudent(studentData);
 
+      // =======================================
       // GET CLASS
+      // =======================================
 
       if (studentData.class_id) {
         const {
@@ -173,16 +200,20 @@ export default function StudentDetailsPage({
             "Class error:",
             classError
           );
-        }
 
-        setClassData(
-          classInfo || null
-        );
+          setClassData(null);
+        } else {
+          setClassData(
+            classInfo || null
+          );
+        }
       } else {
         setClassData(null);
       }
 
+      // =======================================
       // GET SPEECH ANALYSIS
+      // =======================================
 
       const {
         data: analysisData,
@@ -209,9 +240,12 @@ export default function StudentDetailsPage({
           "student_id",
           studentData.id
         )
-        .order("created_at", {
-          ascending: false,
-        });
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
 
       if (analysisError) {
         console.error(
@@ -232,7 +266,6 @@ export default function StudentDetailsPage({
       );
 
       setLoading(false);
-
     } catch (error) {
       console.error(
         "Student details error:",
@@ -340,7 +373,6 @@ export default function StudentDetailsPage({
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50">
-
         <div className="mx-auto max-w-7xl px-6 py-20 text-center">
 
           <div className="text-6xl">
@@ -356,7 +388,6 @@ export default function StudentDetailsPage({
           </p>
 
         </div>
-
       </main>
     );
   }
@@ -377,7 +408,6 @@ export default function StudentDetailsPage({
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
             <div>
-
               <h1 className="text-2xl font-bold text-blue-700">
                 Communication Skills
               </h1>
@@ -385,7 +415,6 @@ export default function StudentDetailsPage({
               <p className="text-sm text-gray-500">
                 Student Details
               </p>
-
             </div>
 
             <button
