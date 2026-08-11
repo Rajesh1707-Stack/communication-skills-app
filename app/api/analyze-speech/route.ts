@@ -10,6 +10,10 @@ const ai = new GoogleGenAI({
   apiKey,
 });
 
+// =====================================================
+// PROMPT
+// =====================================================
+
 const ANALYSIS_PROMPT = `
 You are an English communication teacher evaluating a school student's spoken English.
 
@@ -37,7 +41,7 @@ Evaluate:
 5. Fluency
 6. Pronunciation as far as reasonably possible from the audio
 
-IMPORTANT:
+IMPORTANT RULES:
 
 - Do not invent words that the student did not say.
 - The transcript must represent the student's actual speech.
@@ -50,7 +54,7 @@ IMPORTANT:
 - Do not use Markdown.
 - Do not put JSON inside a code block.
 
-Return exactly this structure:
+Return exactly this JSON structure:
 
 {
   "transcript": "What the student actually said",
@@ -77,6 +81,10 @@ If the student's sentence is already correct:
 Give scores based on the actual audio.
 `;
 
+// =====================================================
+// SCORE HELPER
+// =====================================================
+
 function score(value: unknown): number {
   const number = Number(value);
 
@@ -90,7 +98,11 @@ function score(value: unknown): number {
   );
 }
 
-function buildResult(result: any) {
+// =====================================================
+// CLEAN GEMINI RESULT
+// =====================================================
+
+function buildFinalResult(result: any) {
   return {
     transcript: String(
       result?.transcript || ""
@@ -101,6 +113,8 @@ function buildResult(result: any) {
         "Your sentence is correct."
     ),
 
+    // Keep this because your existing frontend
+    // may use the old field name.
     corrected_sentence: String(
       result?.correct_sentence ||
         "Your sentence is correct."
@@ -148,13 +162,48 @@ function buildResult(result: any) {
   };
 }
 
-async function analyzeWithModel(
+// =====================================================
+// REMOVE POSSIBLE MARKDOWN FROM GEMINI RESPONSE
+// =====================================================
+
+function cleanJsonText(text: string): string {
+  let cleaned = text.trim();
+
+  if (
+    cleaned.startsWith("```json")
+  ) {
+    cleaned = cleaned.substring(7);
+  }
+
+  if (
+    cleaned.startsWith("```")
+  ) {
+    cleaned = cleaned.substring(3);
+  }
+
+  if (
+    cleaned.endsWith("```")
+  ) {
+    cleaned = cleaned.substring(
+      0,
+      cleaned.length - 3
+    );
+  }
+
+  return cleaned.trim();
+}
+
+// =====================================================
+// CALL GEMINI
+// =====================================================
+
+async function callGemini(
   model: string,
-  base64Audio: string,
-  mimeType: string
+  base64Audio: string
 ) {
   console.log(
-    `Sending speech to Gemini model: ${model}`
+    "Calling Gemini model:",
+    model
   );
 
   const response =
@@ -172,7 +221,7 @@ async function analyzeWithModel(
 
             {
               inlineData: {
-                mimeType,
+                mimeType: "audio/wav",
                 data: base64Audio,
               },
             },
@@ -181,12 +230,18 @@ async function analyzeWithModel(
       ],
 
       config: {
-        responseMimeType: "application/json",
+        responseMimeType:
+          "application/json",
       },
     });
 
   const text =
     response.text?.trim();
+
+  console.log(
+    "Gemini raw response length:",
+    text?.length || 0
+  );
 
   if (!text) {
     throw new Error(
@@ -194,17 +249,19 @@ async function analyzeWithModel(
     );
   }
 
-  console.log(
-    `Gemini ${model} response:`,
-    text
-  );
+  const cleaned =
+    cleanJsonText(text);
 
   try {
-    return JSON.parse(text);
-  } catch {
+    return JSON.parse(cleaned);
+  } catch (error) {
     console.error(
-      "Gemini returned invalid JSON:",
-      text.substring(0, 1000)
+      "Gemini JSON parsing failed."
+    );
+
+    console.error(
+      "Gemini response:",
+      cleaned.substring(0, 2000)
     );
 
     throw new Error(
@@ -213,17 +270,49 @@ async function analyzeWithModel(
   }
 }
 
+// =====================================================
+// POST
+// =====================================================
+
 export async function POST(
   request: Request
 ) {
   try {
     console.log(
-      "=== Gemini speech analysis started ==="
+      "================================="
     );
 
-    // =========================================
-    // GET AUDIO
-    // =========================================
+    console.log(
+      "GEMINI SPEECH ANALYSIS STARTED"
+    );
+
+    console.log(
+      "================================="
+    );
+
+    // =================================================
+    // CHECK API KEY
+    // =================================================
+
+    if (!apiKey) {
+      console.error(
+        "GEMINI_API_KEY is missing."
+      );
+
+      return Response.json(
+        {
+          error:
+            "Gemini API key is not configured on the server.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    // =================================================
+    // GET FORM DATA
+    // =================================================
 
     const formData =
       await request.formData();
@@ -235,17 +324,23 @@ export async function POST(
       !audio ||
       !(audio instanceof File)
     ) {
+      console.error(
+        "No audio File received."
+      );
+
       return Response.json(
         {
           error:
             "Audio file was not received.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
     console.log(
-      "Audio received:",
+      "Audio information:",
       {
         name: audio.name,
         type: audio.type,
@@ -253,99 +348,116 @@ export async function POST(
       }
     );
 
-    if (audio.size === 0) {
+    // =================================================
+    // CHECK EMPTY AUDIO
+    // =================================================
+
+    if (audio.size <= 0) {
       return Response.json(
         {
           error:
             "The recorded audio is empty.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // Gemini inline audio requests have a 20 MB
-    // total request-size limit.
-    if (audio.size > 15 * 1024 * 1024) {
+    // =================================================
+    // CHECK AUDIO SIZE
+    // =================================================
+
+    const MAX_AUDIO_SIZE =
+      15 * 1024 * 1024;
+
+    if (
+      audio.size >
+      MAX_AUDIO_SIZE
+    ) {
       return Response.json(
         {
           error:
-            "The audio recording is too large. Please record a shorter answer.",
+            "The recording is too large. Please record a shorter answer.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // =========================================
-    // AUDIO → BASE64
-    // =========================================
+    // =================================================
+    // READ AUDIO
+    // =================================================
+
+    const arrayBuffer =
+      await audio.arrayBuffer();
 
     const audioBuffer =
-      Buffer.from(
-        await audio.arrayBuffer()
+      Buffer.from(arrayBuffer);
+
+    if (
+      audioBuffer.length === 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "The audio data is empty.",
+        },
+        {
+          status: 400,
+        }
       );
+    }
+
+    // =================================================
+    // CONVERT TO BASE64
+    // =================================================
 
     const base64Audio =
       audioBuffer.toString(
         "base64"
       );
 
-    // The new student client sends WAV.
-    // Keep the actual MIME type if it is supported.
-    let mimeType =
-      audio.type ||
-      "audio/wav";
-
-    const supportedTypes = [
-      "audio/wav",
-      "audio/mp3",
-      "audio/mpeg",
-      "audio/aiff",
-      "audio/aac",
-      "audio/ogg",
-      "audio/flac",
-    ];
-
-    if (
-      !supportedTypes.includes(
-        mimeType
-      )
-    ) {
-      console.warn(
-        "Unsupported browser MIME type:",
-        mimeType
-      );
-
-      mimeType = "audio/wav";
-    }
-
     console.log(
-      "Gemini audio:",
-      {
-        mimeType,
-        bytes: audioBuffer.length,
-      }
+      "Audio converted to base64."
     );
 
-    // =========================================
-    // GEMINI
-    // =========================================
+    console.log(
+      "Base64 length:",
+      base64Audio.length
+    );
 
-    let result: any = null;
-    let lastError: any = null;
-
-    /*
-      First try the current Gemini Flash model.
-
-      If Gemini returns a temporary 5xx error,
-      retry once.
-
-      Then fall back to Gemini 2.5 Flash.
-    */
+    // =================================================
+    // GEMINI MODELS
+    // =================================================
+    //
+    // Primary:
+    // gemini-2.5-flash
+    //
+    // Fallback:
+    // gemini-2.5-flash-lite
+    //
+    // Both support audio input.
+    //
+    // =================================================
 
     const models = [
-      "gemini-3.6-flash",
       "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
     ];
+
+    let geminiResult:
+      | any
+      | null = null;
+
+    let lastError:
+      | any
+      | null = null;
+
+    // =================================================
+    // TRY MODELS
+    // =================================================
 
     for (
       let modelIndex = 0;
@@ -355,126 +467,223 @@ export async function POST(
       const model =
         models[modelIndex];
 
-      const attempts =
+      // Primary model gets two attempts.
+      // Fallback gets one attempt.
+      const maxAttempts =
         modelIndex === 0
           ? 2
           : 1;
 
       for (
         let attempt = 1;
-        attempt <= attempts;
+        attempt <= maxAttempts;
         attempt++
       ) {
         try {
           console.log(
-            `Gemini attempt ${attempt}/${attempts}: ${model}`
+            `Trying ${model} - attempt ${attempt}/${maxAttempts}`
           );
 
-          result =
-            await analyzeWithModel(
+          geminiResult =
+            await callGemini(
               model,
-              base64Audio,
-              mimeType
+              base64Audio
             );
 
           console.log(
-            `Gemini analysis successful using ${model}`
+            `SUCCESS: ${model}`
           );
 
           break;
         } catch (error: any) {
-          lastError = error;
+          lastError =
+            error;
 
           console.error(
-            `Gemini ${model} attempt ${attempt} failed:`,
+            `FAILED: ${model} attempt ${attempt}`
+          );
+
+          console.error(
             error
           );
 
-          const message =
+          const errorMessage =
             String(
               error?.message ||
                 ""
             );
 
-          const isServerError =
-            message.includes(
+          const status =
+            Number(
+              error?.status ||
+                0
+            );
+
+          const isTemporaryServerError =
+            status >= 500 ||
+            errorMessage.includes(
               "500"
             ) ||
-            message.includes(
+            errorMessage.includes(
               "INTERNAL"
             ) ||
-            error?.status >= 500;
+            errorMessage.includes(
+              "Internal error"
+            );
+
+          // -------------------------------------------
+          // RETRY TEMPORARY 500 ERROR
+          // -------------------------------------------
 
           if (
-            !isServerError
+            isTemporaryServerError &&
+            attempt < maxAttempts
           ) {
-            throw error;
-          }
+            console.log(
+              "Temporary Gemini error. Retrying..."
+            );
 
-          if (
-            attempt < attempts
-          ) {
             await new Promise(
               (resolve) =>
                 setTimeout(
                   resolve,
-                  1500
+                  2000
                 )
             );
+
+            continue;
           }
+
+          // -------------------------------------------
+          // TRY NEXT MODEL
+          // -------------------------------------------
+
+          break;
         }
       }
 
-      if (result) {
+      if (geminiResult) {
         break;
       }
     }
 
-    if (!result) {
+    // =================================================
+    // ALL MODELS FAILED
+    // =================================================
+
+    if (!geminiResult) {
       console.error(
-        "All Gemini attempts failed:",
+        "================================="
+      );
+
+      console.error(
+        "ALL GEMINI MODELS FAILED"
+      );
+
+      console.error(
         lastError
+      );
+
+      console.error(
+        "================================="
       );
 
       return Response.json(
         {
           error:
-            "Gemini speech analysis is temporarily unavailable. Please try again in a few seconds.",
+            "Gemini speech analysis is temporarily unavailable. Please try again.",
         },
-        { status: 503 }
+        {
+          status: 503,
+        }
       );
     }
 
-    // =========================================
-    // FINAL RESULT
-    // =========================================
+    // =================================================
+    // BUILD FINAL RESULT
+    // =================================================
 
     const finalResult =
-      buildResult(result);
+      buildFinalResult(
+        geminiResult
+      );
 
     console.log(
-      "Final speech analysis:",
+      "Final analysis result:",
       finalResult
     );
 
+    // =================================================
+    // RETURN
+    // =================================================
+
     return Response.json(
-      finalResult
+      finalResult,
+      {
+        status: 200,
+      }
     );
 
   } catch (error: any) {
+    // =================================================
+    // FINAL ERROR
+    // =================================================
+
     console.error(
-      "=== GEMINI API ERROR ==="
+      "================================="
     );
 
-    console.error(error);
+    console.error(
+      "GEMINI API ERROR"
+    );
+
+    console.error(
+      error
+    );
+
+    console.error(
+      "================================="
+    );
+
+    const message =
+      String(
+        error?.message ||
+          ""
+      );
+
+    // Don't expose the entire internal
+    // Gemini stack trace to the student.
+    if (
+      message.includes(
+        "500"
+      ) ||
+      message.includes(
+        "INTERNAL"
+      ) ||
+      message.includes(
+        "Internal error"
+      )
+    ) {
+      return Response.json(
+        {
+          error:
+            "Gemini speech analysis is temporarily unavailable. Please try again.",
+        },
+        {
+          status: 503,
+        }
+      );
+    }
 
     return Response.json(
       {
         error:
-          error?.message ||
+          message ||
           "Gemini speech analysis failed.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
