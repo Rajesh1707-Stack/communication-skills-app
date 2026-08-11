@@ -826,7 +826,7 @@ export default function SpeakingPracticeClient() {
               }
               className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
             >
-              â† Lesson
+              ← Lesson
             </button>
 
             <button
@@ -855,7 +855,7 @@ export default function SpeakingPracticeClient() {
         <div className="text-center">
 
           <div className="text-6xl">
-            ðŸŽ¤
+            🎤
           </div>
 
           <h2 className="mt-5 text-3xl font-bold text-gray-900">
@@ -891,7 +891,7 @@ export default function SpeakingPracticeClient() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected âœ“
+              Lesson connected ✓
             </p>
           )}
 
@@ -906,7 +906,7 @@ export default function SpeakingPracticeClient() {
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
 
             <p className="font-semibold">
-              âš ï¸ {errorMessage}
+              ⚠️ {errorMessage}
             </p>
 
           </div>
@@ -928,7 +928,7 @@ export default function SpeakingPracticeClient() {
           >
 
             <span className="text-6xl">
-              ðŸŽ™ï¸
+              🎙️
             </span>
 
           </div>
@@ -951,7 +951,7 @@ export default function SpeakingPracticeClient() {
                 }
                 className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
               >
-                â¹ Stop Recording
+                ⏹ Stop Recording
               </button>
 
             </>
@@ -976,7 +976,7 @@ export default function SpeakingPracticeClient() {
                 disabled={!supported}
                 className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                ðŸŽ™ Start Recording
+                🎙️ Start Recording
               </button>
 
             </>
@@ -996,7 +996,7 @@ export default function SpeakingPracticeClient() {
             <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <div className="text-5xl">
-                âœ…
+                ✅
               </div>
 
               <h3 className="mt-4 text-2xl font-bold text-gray-900">
@@ -1016,8 +1016,8 @@ export default function SpeakingPracticeClient() {
                 className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing
-                  ? "ðŸ¤– Analyzing..."
-                  : "ðŸ¤– Analyze My Speech"}
+                  ? "🤖 Analyzing..."
+                  : "🤖 Analyze My Speech"}
               </button>
 
             </section>
@@ -1039,7 +1039,7 @@ export default function SpeakingPracticeClient() {
               <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
 
                 <div className="text-6xl">
-                  ðŸŽ‰
+                  🎉
                 </div>
 
                 <h3 className="mt-4 text-3xl font-bold text-green-700">
@@ -1072,7 +1072,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ðŸ“ What You Said
+                📖 What You Said
               </h3>
 
               <div className="mt-5 rounded-xl bg-slate-50 p-6">
@@ -1091,7 +1091,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                âœ… Correct Sentence
+                ✅ Correct Sentence
               </h3>
 
               <div className="mt-5 rounded-xl bg-green-50 p-6">
@@ -1110,7 +1110,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                âœï¸ Grammar Correction
+                ✔️ Grammar Correction
               </h3>
 
               <div className="mt-5 rounded-xl bg-yellow-50 p-6">
@@ -1129,7 +1129,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ðŸ’¡ Grammar Explanation
+                💡 Grammar Explanation
               </h3>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-6">
@@ -1148,7 +1148,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ðŸ“š Vocabulary Suggestion
+                📚 Vocabulary Suggestion
               </h3>
 
               <div className="mt-5 rounded-xl bg-purple-50 p-6">
@@ -1169,7 +1169,7 @@ export default function SpeakingPracticeClient() {
               <div className="text-center">
 
                 <h3 className="text-3xl font-bold text-gray-900">
-                  ðŸ¤– AI Speech Analysis
+                  🤖 AI Speech Analysis
                 </h3>
 
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
@@ -1191,28 +1191,28 @@ export default function SpeakingPracticeClient() {
               </div>
 
               <ScoreBar
-                title="ðŸ—£ï¸ Pronunciation"
+                title="🗣️ Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title="ðŸ“š Vocabulary"
+                title="📚 Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title="âœï¸ Grammar"
+                title="✔️ Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title="ðŸ’¬ Fluency"
+                title="💬 Fluency"
                 score={
                   analysis.fluency_score
                 }
@@ -1225,7 +1225,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
               <h3 className="text-2xl font-bold">
-                ðŸŒŸ AI Feedback
+                🌟 AI Feedback
               </h3>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
@@ -1240,7 +1240,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ðŸŽ¯ What would you like to do?
+                🎯 What would you like to do?
               </h3>
 
               <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -1251,7 +1251,7 @@ export default function SpeakingPracticeClient() {
                   }
                   className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
                 >
-                  ðŸŽ™ Try Again
+                  🎙️ Try Again
                 </button>
 
                 <button
@@ -1260,7 +1260,7 @@ export default function SpeakingPracticeClient() {
                   }
                   className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
                 >
-                  â† Back to Lesson
+                  ← Back to Lesson
                 </button>
 
                 <button
@@ -1270,7 +1270,7 @@ export default function SpeakingPracticeClient() {
                   }}
                   className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
                 >
-                  ðŸ“Š View Progress
+                  📊 View Progress
                 </button>
 
               </div>
