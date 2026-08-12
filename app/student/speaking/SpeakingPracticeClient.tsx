@@ -788,7 +788,7 @@ export default function SpeakingPracticePage() {
                 disabled={!supported}
                 className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                &#127897; Start Recording
+               Start Recording
               </button>
 
             </>
