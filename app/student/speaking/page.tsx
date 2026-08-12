@@ -800,7 +800,7 @@ export default function SpeakingPracticePage() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected 
+              Lesson connected
             </p>
           )}
 
@@ -881,9 +881,25 @@ export default function SpeakingPracticePage() {
                 ? "animate-pulse bg-red-100"
                 : "bg-blue-50"
             }`}
+            aria-hidden="true"
           >
-
-
+            <div className="relative flex h-14 w-10 items-center justify-center">
+              <div
+                className={`h-16 w-9 rounded-full border-4 ${
+                  isRecording ? "border-red-600" : "border-blue-600"
+                }`}
+              />
+              <div
+                className={`absolute bottom-0 left-1/2 h-7 w-1 -translate-x-1/2 rounded-full ${
+                  isRecording ? "bg-red-600" : "bg-blue-600"
+                }`}
+              />
+              <div
+                className={`absolute bottom-[-8px] left-1/2 h-1.5 w-14 -translate-x-1/2 rounded-full ${
+                  isRecording ? "bg-red-600" : "bg-blue-600"
+                }`}
+              />
+            </div>
           </div>
 
           {isRecording ? (
@@ -1146,28 +1162,28 @@ export default function SpeakingPracticePage() {
               </div>
 
               <ScoreBar
-                title=" Pronunciation"
+                title="Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title=" Vocabulary"
+                title="Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title=" Grammar"
+                title="Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title=" Fluency"
+                title="Fluency"
                 score={
                   analysis.fluency_score
                 }
