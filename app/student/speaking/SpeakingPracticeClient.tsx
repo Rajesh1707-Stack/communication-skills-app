@@ -646,7 +646,7 @@ export default function SpeakingPracticePage() {
               }
               className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
             >
-              &#8592; Lesson
+              Lesson
             </button>
 
             <button
@@ -673,7 +673,7 @@ export default function SpeakingPracticePage() {
         <div className="text-center">
 
           <div className="text-6xl">
-            &#127908;
+            
           </div>
 
           <h2 className="mt-5 text-3xl font-bold text-gray-900">
@@ -707,7 +707,7 @@ export default function SpeakingPracticePage() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected &#10003;
+              Lesson connected
             </p>
           )}
 
@@ -720,7 +720,7 @@ export default function SpeakingPracticePage() {
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
 
             <p className="font-semibold">
-              &#9888;&#65039; {errorMessage}
+              Error: {errorMessage}
             </p>
 
           </div>
@@ -740,7 +740,7 @@ export default function SpeakingPracticePage() {
           >
 
             <span className="text-6xl">
-              &#127897;&#65039;
+              
             </span>
 
           </div>
@@ -763,7 +763,7 @@ export default function SpeakingPracticePage() {
                 }
                 className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
               >
-                &#9209; Stop Recording
+                Stop Recording
               </button>
 
             </>
@@ -806,7 +806,7 @@ export default function SpeakingPracticePage() {
             <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <div className="text-5xl">
-                &#9989;
+                
               </div>
 
               <h3 className="mt-4 text-2xl font-bold text-gray-900">
@@ -826,8 +826,8 @@ export default function SpeakingPracticePage() {
                 className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing
-                  ? "&#129302; Analyzing..."
-                  : "&#129302; Analyze My Speech"}
+                  ? "Analyzing..."
+                  : "Analyze My Speech"}
               </button>
 
             </section>
@@ -847,7 +847,7 @@ export default function SpeakingPracticePage() {
               <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
 
                 <div className="text-6xl">
-                  &#127881;
+                  
                 </div>
 
                 <h3 className="mt-4 text-3xl font-bold text-green-700">
@@ -880,7 +880,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#128196; What You Said
+                What You Said
               </h3>
 
               <div className="mt-5 rounded-xl bg-slate-50 p-6">
@@ -899,7 +899,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#9989; Correct Sentence
+                 Correct Sentence
               </h3>
 
               <div className="mt-5 rounded-xl bg-green-50 p-6">
@@ -918,7 +918,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#9881;&#65039; Grammar Correction
+                Grammar Correction
               </h3>
 
               <div className="mt-5 rounded-xl bg-yellow-50 p-6">
@@ -937,7 +937,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#128161; Grammar Explanation
+                Grammar Explanation
               </h3>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-6">
@@ -956,7 +956,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#128218; Vocabulary Suggestion
+                Vocabulary Suggestion
               </h3>
 
               <div className="mt-5 rounded-xl bg-purple-50 p-6">
@@ -977,7 +977,7 @@ export default function SpeakingPracticePage() {
               <div className="text-center">
 
                 <h3 className="text-3xl font-bold text-gray-900">
-                  &#129302; AI Speech Analysis
+                  AI Speech Analysis
                 </h3>
 
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
@@ -999,28 +999,28 @@ export default function SpeakingPracticePage() {
               </div>
 
               <ScoreBar
-                title="&#128483;&#65039; Pronunciation"
+                title="Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title="&#128218; Vocabulary"
+                title="Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title="&#9881;&#65039; Grammar"
+                title="Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title="&#128172; Fluency"
+                title="Fluency"
                 score={
                   analysis.fluency_score
                 }
@@ -1033,7 +1033,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
               <h3 className="text-2xl font-bold">
-                &#127775; AI Feedback
+                AI Feedback
               </h3>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
@@ -1048,7 +1048,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                &#127919; What would you like to do?
+                What would you like to do?
               </h3>
 
               <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -1059,7 +1059,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
                 >
-                  &#127897; Try Again
+                  Try Again
                 </button>
 
                 <button
@@ -1068,7 +1068,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
                 >
-                  &#8592; Back to Lesson
+                  Back to Lesson
                 </button>
 
                 <button
@@ -1078,7 +1078,7 @@ export default function SpeakingPracticePage() {
                   }}
                   className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
                 >
-                  &#128202; View Progress
+                  View Progress
                 </button>
 
               </div>
