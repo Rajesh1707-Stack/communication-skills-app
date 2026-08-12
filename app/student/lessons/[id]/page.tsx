@@ -382,9 +382,10 @@ export default function StudentLessonPage() {
 
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
 
-          <div className="text-6xl">
-            ⏳
-          </div>
+          <div
+            className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+            aria-hidden="true"
+          />
 
           <h2 className="mt-5 text-2xl font-bold text-gray-900">
             Loading lesson...
@@ -416,7 +417,7 @@ export default function StudentLessonPage() {
           <div className="rounded-2xl border border-red-200 bg-white p-10 text-center shadow-sm">
 
             <div className="text-6xl">
-              ⚠️
+            
             </div>
 
             <h2 className="mt-5 text-2xl font-bold text-red-600">
@@ -435,7 +436,7 @@ export default function StudentLessonPage() {
               }}
               className="mt-6 rounded-xl bg-blue-600 px-7 py-3 font-bold text-white hover:bg-blue-700"
             >
-              ← Back to Lessons
+              Back to Lessons
             </button>
 
           </div>
@@ -478,7 +479,7 @@ export default function StudentLessonPage() {
             }}
             className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
           >
-            ← Back to Lessons
+             Back to Lessons
           </button>
 
         </div>
@@ -531,7 +532,10 @@ export default function StudentLessonPage() {
 
         <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">📖</span>
+            <div
+              className="h-10 w-10 shrink-0 rounded-xl bg-blue-100"
+              aria-hidden="true"
+            />
 
             <div>
               <h3 className="text-2xl font-bold text-gray-900">
@@ -599,7 +603,13 @@ export default function StudentLessonPage() {
                         className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm hover:bg-blue-100"
                         title="Listen to sentence"
                       >
-                        🔊
+                        <span
+                          className="relative block h-4 w-4"
+                          aria-hidden="true"
+                        >
+                          <span className="absolute left-0 top-1 h-2.5 w-1.5 rounded-sm bg-blue-600" />
+                          <span className="absolute left-1.5 top-0.5 h-3.5 w-2.5 rounded-r-full border-2 border-l-0 border-blue-600" />
+                        </span>
                       </button>
                     </div>
                   )
@@ -616,7 +626,10 @@ export default function StudentLessonPage() {
         <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">📚</span>
+              <div
+                className="h-10 w-10 shrink-0 rounded-xl bg-purple-100"
+                aria-hidden="true"
+              />
 
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -684,7 +697,7 @@ export default function StudentLessonPage() {
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg hover:bg-blue-200"
                       title={`Listen to ${item.word}`}
                     >
-                      🔊
+                      
                     </button>
                   </div>
 
@@ -715,7 +728,7 @@ export default function StudentLessonPage() {
                     }}
                     className="mt-3 w-full rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
                   >
-                    🔊 Listen to Example
+                     Listen to Example
                   </button>
                 </div>
               ))}
@@ -731,9 +744,13 @@ export default function StudentLessonPage() {
 
           <div className="flex items-center gap-3">
 
-            <span className="text-3xl">
-              🎤
-            </span>
+            <div
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100"
+              aria-hidden="true"
+            >
+              <div className="h-5 w-3 rounded-full border-2 border-blue-600" />
+              <div className="absolute bottom-2 h-2.5 w-0.5 rounded-full bg-blue-600" />
+            </div>
 
             <div>
 
@@ -767,7 +784,7 @@ export default function StudentLessonPage() {
               }
               className="mt-5 rounded-xl bg-blue-600 px-7 py-3 font-bold text-white hover:bg-blue-700"
             >
-              🎙 Start Speaking
+              Start Speaking
             </button>
 
           </div>
@@ -782,9 +799,10 @@ export default function StudentLessonPage() {
 
           <div className="flex items-center gap-3">
 
-            <span className="text-3xl">
-              🎯
-            </span>
+            <div
+              className="h-10 w-10 shrink-0 rounded-xl bg-green-100"
+              aria-hidden="true"
+            />
 
             <div>
 
@@ -862,7 +880,7 @@ export default function StudentLessonPage() {
                       </h4>
 
                       <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-500">
-                        ⏱ {activity.time}
+                        {activity.time}
                       </span>
 
                     </div>
