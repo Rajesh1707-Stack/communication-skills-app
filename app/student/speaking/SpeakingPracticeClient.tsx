@@ -23,175 +23,10 @@ type Analysis = {
   feedback: string;
 };
 
-
-async function convertAudioBlobToWav(blob: Blob): Promise<Blob> {
-  const arrayBuffer = await blob.arrayBuffer();
-
-  const AudioContextClass =
-    window.AudioContext ||
-    (window as typeof window & {
-      webkitAudioContext?: typeof AudioContext;
-    }).webkitAudioContext;
-
-  if (!AudioContextClass) {
-    throw new Error(
-      "Your browser does not support audio conversion."
-    );
-  }
-
-  const audioContext = new AudioContextClass();
-
-  try {
-    const audioBuffer =
-      await audioContext.decodeAudioData(arrayBuffer.slice(0));
-
-    const numberOfChannels =
-      Math.min(audioBuffer.numberOfChannels, 2);
-
-    const sampleRate =
-      audioBuffer.sampleRate;
-
-    const length =
-      audioBuffer.length;
-
-    const interleaved = new Float32Array(
-      length * numberOfChannels
-    );
-
-    if (numberOfChannels === 1) {
-      interleaved.set(
-        audioBuffer.getChannelData(0)
-      );
-    } else {
-      const left =
-        audioBuffer.getChannelData(0);
-      const right =
-        audioBuffer.getChannelData(1);
-
-      for (let i = 0; i < length; i++) {
-        interleaved[i * 2] = left[i];
-        interleaved[i * 2 + 1] = right[i];
-      }
-    }
-
-    const bytesPerSample = 2;
-    const blockAlign =
-      numberOfChannels * bytesPerSample;
-
-    const byteRate =
-      sampleRate * blockAlign;
-
-    const dataSize =
-      interleaved.length * bytesPerSample;
-
-    const buffer =
-      new ArrayBuffer(44 + dataSize);
-
-    const view =
-      new DataView(buffer);
-
-    function writeString(
-      offset: number,
-      value: string
-    ) {
-      for (let i = 0; i < value.length; i++) {
-        view.setUint8(
-          offset + i,
-          value.charCodeAt(i)
-        );
-      }
-    }
-
-    writeString(0, "RIFF");
-    view.setUint32(
-      4,
-      36 + dataSize,
-      true
-    );
-    writeString(8, "WAVE");
-    writeString(12, "fmt ");
-
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(
-      22,
-      numberOfChannels,
-      true
-    );
-    view.setUint32(
-      24,
-      sampleRate,
-      true
-    );
-    view.setUint32(
-      28,
-      byteRate,
-      true
-    );
-    view.setUint16(
-      32,
-      blockAlign,
-      true
-    );
-    view.setUint16(
-      34,
-      16,
-      true
-    );
-
-    writeString(36, "data");
-    view.setUint32(
-      40,
-      dataSize,
-      true
-    );
-
-    let offset = 44;
-
-    for (
-      let i = 0;
-      i < interleaved.length;
-      i++
-    ) {
-      const sample =
-        Math.max(
-          -1,
-          Math.min(
-            1,
-            interleaved[i]
-          )
-        );
-
-      const intSample =
-        sample < 0
-          ? sample * 0x8000
-          : sample * 0x7fff;
-
-      view.setInt16(
-        offset,
-        intSample,
-        true
-      );
-
-      offset += 2;
-    }
-
-    return new Blob(
-      [buffer],
-      {
-        type: "audio/wav",
-      }
-    );
-  } finally {
-    await audioContext.close();
-  }
-}
-
-export default function SpeakingPracticeClient() {
+export default function SpeakingPracticePage() {
   const searchParams = useSearchParams();
 
-  const lessonId =
-    searchParams.get("lessonId");
+  const lessonId = searchParams.get("lessonId");
 
   const mediaRecorderRef =
     useRef<MediaRecorder | null>(null);
@@ -263,8 +98,7 @@ export default function SpeakingPracticeClient() {
           audio: true,
         });
 
-      let mimeType =
-        "audio/webm";
+      let mimeType = "audio/webm";
 
       if (
         MediaRecorder.isTypeSupported(
@@ -278,8 +112,7 @@ export default function SpeakingPracticeClient() {
           "audio/webm"
         )
       ) {
-        mimeType =
-          "audio/webm";
+        mimeType = "audio/webm";
       }
 
       const recorder =
@@ -318,8 +151,7 @@ export default function SpeakingPracticeClient() {
         stream
           .getTracks()
           .forEach(
-            (track) =>
-              track.stop()
+            (track) => track.stop()
           );
       };
 
@@ -369,9 +201,6 @@ export default function SpeakingPracticeClient() {
     currentLessonId: string
   ) {
     try {
-      // First check whether a progress
-      // record already exists.
-
       const {
         data: existingProgress,
         error: findError,
@@ -537,21 +366,13 @@ export default function SpeakingPracticeClient() {
       // SEND AUDIO TO AI
       // =====================================
 
-      // Gemini's audio input currently supports WAV, MP3,
-      // AIFF, AAC, OGG Vorbis and FLAC. Convert the browser's
-      // WebM recording to WAV before sending it to the API.
-      const wavBlob =
-        await convertAudioBlobToWav(
-          audioBlob
-        );
-
       const formData =
         new FormData();
 
       formData.append(
         "audio",
-        wavBlob,
-        "student-speech.wav"
+        audioBlob,
+        "student-speech.webm"
       );
 
       const response =
@@ -633,6 +454,7 @@ export default function SpeakingPracticeClient() {
 
           corrected_sentence:
             result.corrected_sentence ||
+            result.correct_sentence ||
             "",
 
           grammar_correction:
@@ -798,9 +620,7 @@ export default function SpeakingPracticeClient() {
   return (
     <main className="min-h-screen bg-slate-50">
 
-      {/* =================================== */}
       {/* HEADER */}
-      {/* =================================== */}
 
       <header className="border-b bg-white">
 
@@ -826,7 +646,7 @@ export default function SpeakingPracticeClient() {
               }
               className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
             >
-              ← Lesson
+              &#8592; Lesson
             </button>
 
             <button
@@ -844,9 +664,7 @@ export default function SpeakingPracticeClient() {
 
       </header>
 
-      {/* =================================== */}
       {/* CONTENT */}
-      {/* =================================== */}
 
       <section className="mx-auto max-w-4xl px-6 py-10">
 
@@ -855,7 +673,7 @@ export default function SpeakingPracticeClient() {
         <div className="text-center">
 
           <div className="text-6xl">
-            🎤
+            &#127908;
           </div>
 
           <h2 className="mt-5 text-3xl font-bold text-gray-900">
@@ -869,9 +687,7 @@ export default function SpeakingPracticeClient() {
 
         </div>
 
-        {/* ================================= */}
         {/* SPEAKING TASK */}
-        {/* ================================= */}
 
         <section className="mt-8 rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
@@ -891,31 +707,27 @@ export default function SpeakingPracticeClient() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected ✓
+              Lesson connected &#10003;
             </p>
           )}
 
         </section>
 
-        {/* ================================= */}
         {/* ERROR */}
-        {/* ================================= */}
 
         {errorMessage && (
 
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
 
             <p className="font-semibold">
-              ⚠️ {errorMessage}
+              &#9888;&#65039; {errorMessage}
             </p>
 
           </div>
 
         )}
 
-        {/* ================================= */}
         {/* MICROPHONE */}
-        {/* ================================= */}
 
         <section className="mt-8 rounded-2xl border bg-white p-10 text-center shadow-sm">
 
@@ -928,7 +740,7 @@ export default function SpeakingPracticeClient() {
           >
 
             <span className="text-6xl">
-              🎙️
+              &#127897;&#65039;
             </span>
 
           </div>
@@ -951,7 +763,7 @@ export default function SpeakingPracticeClient() {
                 }
                 className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
               >
-                ⏹ Stop Recording
+                &#9209; Stop Recording
               </button>
 
             </>
@@ -976,7 +788,7 @@ export default function SpeakingPracticeClient() {
                 disabled={!supported}
                 className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                🎙️ Start Recording
+                &#127897; Start Recording
               </button>
 
             </>
@@ -985,9 +797,7 @@ export default function SpeakingPracticeClient() {
 
         </section>
 
-        {/* ================================= */}
         {/* RECORDING READY */}
-        {/* ================================= */}
 
         {audioBlob &&
           !isRecording &&
@@ -996,7 +806,7 @@ export default function SpeakingPracticeClient() {
             <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <div className="text-5xl">
-                ✅
+                &#9989;
               </div>
 
               <h3 className="mt-4 text-2xl font-bold text-gray-900">
@@ -1016,17 +826,15 @@ export default function SpeakingPracticeClient() {
                 className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing
-                  ? "🤖 Analyzing..."
-                  : "🤖 Analyze My Speech"}
+                  ? "&#129302; Analyzing..."
+                  : "&#129302; Analyze My Speech"}
               </button>
 
             </section>
 
           )}
 
-        {/* ================================= */}
         {/* ANALYSIS RESULTS */}
-        {/* ================================= */}
 
         {analysis && (
 
@@ -1039,7 +847,7 @@ export default function SpeakingPracticeClient() {
               <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
 
                 <div className="text-6xl">
-                  🎉
+                  &#127881;
                 </div>
 
                 <h3 className="mt-4 text-3xl font-bold text-green-700">
@@ -1072,7 +880,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📖 What You Said
+                &#128196; What You Said
               </h3>
 
               <div className="mt-5 rounded-xl bg-slate-50 p-6">
@@ -1091,7 +899,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✅ Correct Sentence
+                &#9989; Correct Sentence
               </h3>
 
               <div className="mt-5 rounded-xl bg-green-50 p-6">
@@ -1110,7 +918,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✔️ Grammar Correction
+                &#9881;&#65039; Grammar Correction
               </h3>
 
               <div className="mt-5 rounded-xl bg-yellow-50 p-6">
@@ -1129,7 +937,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                💡 Grammar Explanation
+                &#128161; Grammar Explanation
               </h3>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-6">
@@ -1148,7 +956,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📚 Vocabulary Suggestion
+                &#128218; Vocabulary Suggestion
               </h3>
 
               <div className="mt-5 rounded-xl bg-purple-50 p-6">
@@ -1169,7 +977,7 @@ export default function SpeakingPracticeClient() {
               <div className="text-center">
 
                 <h3 className="text-3xl font-bold text-gray-900">
-                  🤖 AI Speech Analysis
+                  &#129302; AI Speech Analysis
                 </h3>
 
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
@@ -1191,28 +999,28 @@ export default function SpeakingPracticeClient() {
               </div>
 
               <ScoreBar
-                title="🗣️ Pronunciation"
+                title="&#128483;&#65039; Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title="📚 Vocabulary"
+                title="&#128218; Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title="✔️ Grammar"
+                title="&#9881;&#65039; Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title="💬 Fluency"
+                title="&#128172; Fluency"
                 score={
                   analysis.fluency_score
                 }
@@ -1225,7 +1033,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
               <h3 className="text-2xl font-bold">
-                🌟 AI Feedback
+                &#127775; AI Feedback
               </h3>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
@@ -1240,7 +1048,7 @@ export default function SpeakingPracticeClient() {
             <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                🎯 What would you like to do?
+                &#127919; What would you like to do?
               </h3>
 
               <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -1251,7 +1059,7 @@ export default function SpeakingPracticeClient() {
                   }
                   className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
                 >
-                  🎙️ Try Again
+                  &#127897; Try Again
                 </button>
 
                 <button
@@ -1260,7 +1068,7 @@ export default function SpeakingPracticeClient() {
                   }
                   className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
                 >
-                  ← Back to Lesson
+                  &#8592; Back to Lesson
                 </button>
 
                 <button
@@ -1270,7 +1078,7 @@ export default function SpeakingPracticeClient() {
                   }}
                   className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
                 >
-                  📊 View Progress
+                  &#128202; View Progress
                 </button>
 
               </div>
