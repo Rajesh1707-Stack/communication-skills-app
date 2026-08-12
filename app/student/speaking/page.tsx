@@ -738,7 +738,7 @@ export default function SpeakingPracticePage() {
               }
               className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
             >
-              ← Lesson
+              Lesson
             </button>
 
             <button
@@ -766,9 +766,6 @@ export default function SpeakingPracticePage() {
 
         <div className="text-center">
 
-          <div className="text-6xl">
-            🎤
-          </div>
 
           <h2 className="mt-5 text-3xl font-bold text-gray-900">
             Speaking Practice
@@ -803,7 +800,7 @@ export default function SpeakingPracticePage() {
 
           {lessonId && (
             <p className="mt-4 text-xs text-blue-200">
-              Lesson connected ✓
+              Lesson connected 
             </p>
           )}
 
@@ -865,7 +862,7 @@ export default function SpeakingPracticePage() {
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
 
             <p className="font-semibold">
-              ⚠️ {errorMessage}
+              {errorMessage}
             </p>
 
           </div>
@@ -886,9 +883,6 @@ export default function SpeakingPracticePage() {
             }`}
           >
 
-            <span className="text-6xl">
-              🎙️
-            </span>
 
           </div>
 
@@ -910,7 +904,7 @@ export default function SpeakingPracticePage() {
                 }
                 className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
               >
-                ⏹ Stop Recording
+                 Stop Recording
               </button>
 
             </>
@@ -935,7 +929,7 @@ export default function SpeakingPracticePage() {
                 disabled={!supported}
                 className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                🎙 Start Recording
+                 Start Recording
               </button>
 
             </>
@@ -954,9 +948,6 @@ export default function SpeakingPracticePage() {
 
             <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
 
-              <div className="text-5xl">
-                ✅
-              </div>
 
               <h3 className="mt-4 text-2xl font-bold text-gray-900">
                 Recording Ready
@@ -980,11 +971,11 @@ export default function SpeakingPracticePage() {
                 className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing
-                  ? "🤖 Analyzing..."
+                  ? " Analyzing..."
                   : lessonId &&
                     analysisCount >= MAX_ANALYSES_PER_LESSON
-                  ? "🔒 5 Attempts Used"
-                  : "🤖 Analyze My Speech"}
+                  ? " 5 Attempts Used"
+                  : " Analyze My Speech"}
               </button>
 
             </section>
@@ -1005,9 +996,6 @@ export default function SpeakingPracticePage() {
 
               <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
 
-                <div className="text-6xl">
-                  🎉
-                </div>
 
                 <h3 className="mt-4 text-3xl font-bold text-green-700">
                   Lesson Completed!
@@ -1039,7 +1027,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📝 What You Said
+                 What You Said
               </h3>
 
               <div className="mt-5 rounded-xl bg-slate-50 p-6">
@@ -1058,7 +1046,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✅ Correct Sentence
+                 Correct Sentence
               </h3>
 
               <div className="mt-5 rounded-xl bg-green-50 p-6">
@@ -1077,7 +1065,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                ✏️ Grammar Correction
+                 Grammar Correction
               </h3>
 
               <div className="mt-5 rounded-xl bg-yellow-50 p-6">
@@ -1096,7 +1084,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                💡 Grammar Explanation
+                 Grammar Explanation
               </h3>
 
               <div className="mt-5 rounded-xl bg-blue-50 p-6">
@@ -1115,7 +1103,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                📚 Vocabulary Suggestion
+                 Vocabulary Suggestion
               </h3>
 
               <div className="mt-5 rounded-xl bg-purple-50 p-6">
@@ -1136,7 +1124,7 @@ export default function SpeakingPracticePage() {
               <div className="text-center">
 
                 <h3 className="text-3xl font-bold text-gray-900">
-                  🤖 AI Speech Analysis
+                   AI Speech Analysis
                 </h3>
 
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
@@ -1158,28 +1146,28 @@ export default function SpeakingPracticePage() {
               </div>
 
               <ScoreBar
-                title="🗣️ Pronunciation"
+                title=" Pronunciation"
                 score={
                   analysis.pronunciation_score
                 }
               />
 
               <ScoreBar
-                title="📚 Vocabulary"
+                title=" Vocabulary"
                 score={
                   analysis.vocabulary_score
                 }
               />
 
               <ScoreBar
-                title="✏️ Grammar"
+                title=" Grammar"
                 score={
                   analysis.grammar_score
                 }
               />
 
               <ScoreBar
-                title="💬 Fluency"
+                title=" Fluency"
                 score={
                   analysis.fluency_score
                 }
@@ -1192,7 +1180,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
 
               <h3 className="text-2xl font-bold">
-                🌟 AI Feedback
+                 AI Feedback
               </h3>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
@@ -1207,7 +1195,7 @@ export default function SpeakingPracticePage() {
             <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
 
               <h3 className="text-2xl font-bold text-gray-900">
-                🎯 What would you like to do?
+                 What would you like to do?
               </h3>
 
               <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -1218,7 +1206,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
                 >
-                  🎙 Try Again
+                   Try Again
                 </button>
 
                 <button
@@ -1227,7 +1215,7 @@ export default function SpeakingPracticePage() {
                   }
                   className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
                 >
-                  ← Back to Lesson
+                  Back to Lesson
                 </button>
 
                 <button
@@ -1237,7 +1225,7 @@ export default function SpeakingPracticePage() {
                   }}
                   className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
                 >
-                  📊 View Progress
+                   View Progress
                 </button>
 
               </div>

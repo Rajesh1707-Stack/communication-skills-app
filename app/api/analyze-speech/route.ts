@@ -1,689 +1,1293 @@
-import { GoogleGenAI } from "@google/genai";
+"use client";
 
-const apiKey = process.env.GEMINI_API_KEY;
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is missing.");
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+);
 
-const ai = new GoogleGenAI({
-  apiKey,
-});
+type Analysis = {
+  transcript: string;
+  pronunciation_score: number;
+  vocabulary_score: number;
+  grammar_score: number;
+  fluency_score: number;
+  overall_score: number;
+  correct_sentence: string;
+  grammar_correction: string;
+  grammar_explanation: string;
+  vocabulary_suggestion: string;
+  feedback: string;
+};
 
-// =====================================================
-// PROMPT
-// =====================================================
+export default function SpeakingPracticePage() {
+  const searchParams = useSearchParams();
 
-const ANALYSIS_PROMPT = `
-You are an English communication teacher evaluating a school student's spoken English.
+  const lessonId =
+    searchParams.get("lessonId");
 
-Listen carefully to the student's audio.
+  const mediaRecorderRef =
+    useRef<MediaRecorder | null>(null);
 
-The student is practicing:
+  const audioChunksRef =
+    useRef<Blob[]>([]);
 
-"Introduce Yourself"
+  const [isRecording, setIsRecording] =
+    useState(false);
 
-The student should talk about:
+  const [audioBlob, setAudioBlob] =
+    useState<Blob | null>(null);
 
-- Name
-- Age
-- Where they live
-- School or studies
+  const [analysis, setAnalysis] =
+    useState<Analysis | null>(null);
 
-Analyze the student's actual spoken English.
-
-Evaluate:
+  const [analyzing, setAnalyzing] =
+    useState(false);
 
-1. What the student actually said
-2. Sentence formation
-3. Grammar
-4. Vocabulary
-5. Fluency
-6. Pronunciation as far as reasonably possible from the audio
+  const [errorMessage, setErrorMessage] =
+    useState("");
 
-IMPORTANT RULES:
+  const [supported, setSupported] =
+    useState(true);
 
-- Do not invent words that the student did not say.
-- The transcript must represent the student's actual speech.
-- If the student's sentence is grammatically correct, say that it is correct.
-- If there are grammar mistakes, provide the corrected sentence.
-- Keep explanations simple enough for a school student.
-- Be encouraging.
-- Scores must be between 0 and 100.
-- Return ONLY valid JSON.
-- Do not use Markdown.
-- Do not put JSON inside a code block.
-
-Return exactly this JSON structure:
-
-{
-  "transcript": "What the student actually said",
-  "correct_sentence": "Corrected version of the student's sentence",
-  "pronunciation_score": 0,
-  "vocabulary_score": 0,
-  "grammar_score": 0,
-  "fluency_score": 0,
-  "overall_score": 0,
-  "grammar_correction": "What was wrong",
-  "grammar_explanation": "Simple explanation for the student",
-  "vocabulary_suggestion": "Better vocabulary suggestions",
-  "feedback": "Short encouraging feedback"
-}
-
-If the student's sentence is already correct:
-
-"correct_sentence": "Your sentence is correct."
-
-"grammar_correction": "No grammar correction is required."
-
-"grammar_explanation": "Your sentence formation is good."
-
-Give scores based on the actual audio.
-`;
-
-// =====================================================
-// SCORE HELPER
-// =====================================================
-
-function score(value: unknown): number {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.min(100, Math.round(number))
-  );
-}
-
-// =====================================================
-// CLEAN GEMINI RESULT
-// =====================================================
-
-function buildFinalResult(result: any) {
-  return {
-    transcript: String(
-      result?.transcript || ""
-    ),
-
-    correct_sentence: String(
-      result?.correct_sentence ||
-        "Your sentence is correct."
-    ),
-
-    // Keep this because your existing frontend
-    // may use the old field name.
-    corrected_sentence: String(
-      result?.correct_sentence ||
-        "Your sentence is correct."
-    ),
-
-    pronunciation_score: score(
-      result?.pronunciation_score
-    ),
-
-    vocabulary_score: score(
-      result?.vocabulary_score
-    ),
-
-    grammar_score: score(
-      result?.grammar_score
-    ),
-
-    fluency_score: score(
-      result?.fluency_score
-    ),
-
-    overall_score: score(
-      result?.overall_score
-    ),
-
-    grammar_correction: String(
-      result?.grammar_correction ||
-        "No grammar correction is required."
-    ),
-
-    grammar_explanation: String(
-      result?.grammar_explanation ||
-        "Your sentence formation is good."
-    ),
-
-    vocabulary_suggestion: String(
-      result?.vocabulary_suggestion ||
-        "Your vocabulary is good."
-    ),
-
-    feedback: String(
-      result?.feedback ||
-        "Good effort! Keep practicing."
-    ),
-  };
-}
-
-// =====================================================
-// REMOVE POSSIBLE MARKDOWN FROM GEMINI RESPONSE
-// =====================================================
-
-function cleanJsonText(text: string): string {
-  let cleaned = text.trim();
-
-  if (
-    cleaned.startsWith("```json")
-  ) {
-    cleaned = cleaned.substring(7);
-  }
-
-  if (
-    cleaned.startsWith("```")
-  ) {
-    cleaned = cleaned.substring(3);
-  }
-
-  if (
-    cleaned.endsWith("```")
-  ) {
-    cleaned = cleaned.substring(
-      0,
-      cleaned.length - 3
-    );
-  }
-
-  return cleaned.trim();
-}
-
-// =====================================================
-// CALL GEMINI
-// =====================================================
-
-async function callGemini(
-  model: string,
-  base64Audio: string
-) {
-  console.log(
-    "Calling Gemini model:",
-    model
-  );
-
-  const response =
-    await ai.models.generateContent({
-      model,
-
-      contents: [
-        {
-          role: "user",
-
-          parts: [
-            {
-              text: ANALYSIS_PROMPT,
-            },
-
-            {
-              inlineData: {
-                mimeType: "audio/wav",
-                data: base64Audio,
-              },
-            },
-          ],
-        },
-      ],
-
-      config: {
-        responseMimeType:
-          "application/json",
-      },
-    });
-
-  const text =
-    response.text?.trim();
-
-  console.log(
-    "Gemini raw response length:",
-    text?.length || 0
-  );
-
-  if (!text) {
-    throw new Error(
-      "Gemini returned an empty response."
-    );
-  }
-
-  const cleaned =
-    cleanJsonText(text);
-
-  try {
-    return JSON.parse(cleaned);
-  } catch (error) {
-    console.error(
-      "Gemini JSON parsing failed."
-    );
-
-    console.error(
-      "Gemini response:",
-      cleaned.substring(0, 2000)
-    );
-
-    throw new Error(
-      "Gemini returned invalid JSON."
-    );
-  }
-}
-
-// =====================================================
-// POST
-// =====================================================
-
-export async function POST(
-  request: Request
-) {
-  try {
-    console.log(
-      "================================="
-    );
-
-    console.log(
-      "GEMINI SPEECH ANALYSIS STARTED"
-    );
-
-    console.log(
-      "================================="
-    );
-
-    // =================================================
-    // CHECK API KEY
-    // =================================================
-
-    if (!apiKey) {
-      console.error(
-        "GEMINI_API_KEY is missing."
-      );
-
-      return Response.json(
-        {
-          error:
-            "Gemini API key is not configured on the server.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    // =================================================
-    // GET FORM DATA
-    // =================================================
-
-    const formData =
-      await request.formData();
-
-    const audio =
-      formData.get("audio");
+  const [lessonCompleted, setLessonCompleted] =
+    useState(false);
 
+  const MAX_ANALYSES_PER_LESSON = 5;
+
+  const [analysisCount, setAnalysisCount] =
+    useState(0);
+
+  const [checkingLimit, setCheckingLimit] =
+    useState(true);
+
+  // =========================================
+  // CHECK MICROPHONE
+  // =========================================
+
+  useEffect(() => {
     if (
-      !audio ||
-      !(audio instanceof File)
+      typeof window === "undefined" ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
     ) {
-      console.error(
-        "No audio File received."
-      );
-
-      return Response.json(
-        {
-          error:
-            "Audio file was not received.",
-        },
-        {
-          status: 400,
-        }
-      );
+      setSupported(false);
     }
 
-    console.log(
-      "Audio information:",
-      {
-        name: audio.name,
-        type: audio.type,
-        size: audio.size,
-      }
-    );
+    checkAnalysisLimit();
+  }, [lessonId]);
 
-    // =================================================
-    // CHECK EMPTY AUDIO
-    // =================================================
+  // =========================================
+  // START RECORDING
+  // =========================================
 
-    if (audio.size <= 0) {
-      return Response.json(
-        {
-          error:
-            "The recorded audio is empty.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
+  async function startRecording() {
+    try {
+      setErrorMessage("");
+      setAnalysis(null);
+      setAudioBlob(null);
+      setLessonCompleted(false);
 
-    // =================================================
-    // CHECK AUDIO SIZE
-    // =================================================
-
-    const MAX_AUDIO_SIZE =
-      15 * 1024 * 1024;
-
-    if (
-      audio.size >
-      MAX_AUDIO_SIZE
-    ) {
-      return Response.json(
-        {
-          error:
-            "The recording is too large. Please record a shorter answer.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // =================================================
-    // READ AUDIO
-    // =================================================
-
-    const arrayBuffer =
-      await audio.arrayBuffer();
-
-    const audioBuffer =
-      Buffer.from(arrayBuffer);
-
-    if (
-      audioBuffer.length === 0
-    ) {
-      return Response.json(
-        {
-          error:
-            "The audio data is empty.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // =================================================
-    // CONVERT TO BASE64
-    // =================================================
-
-    const base64Audio =
-      audioBuffer.toString(
-        "base64"
-      );
-
-    console.log(
-      "Audio converted to base64."
-    );
-
-    console.log(
-      "Base64 length:",
-      base64Audio.length
-    );
-
-    // =================================================
-    // GEMINI MODELS
-    // =================================================
-    //
-    // Primary:
-    // gemini-2.5-flash
-    //
-    // Fallback:
-    // gemini-2.5-flash-lite
-    //
-    // Both support audio input.
-    //
-    // =================================================
-
-    const models = [
-      "gemini-2.5-flash",
-      "gemini-2.5-flash-lite",
-    ];
-
-    let geminiResult:
-      | any
-      | null = null;
-
-    let lastError:
-      | any
-      | null = null;
-
-    // =================================================
-    // TRY MODELS
-    // =================================================
-
-    for (
-      let modelIndex = 0;
-      modelIndex < models.length;
-      modelIndex++
-    ) {
-      const model =
-        models[modelIndex];
-
-      // Primary model gets two attempts.
-      // Fallback gets one attempt.
-      const maxAttempts =
-        modelIndex === 0
-          ? 2
-          : 1;
-
-      for (
-        let attempt = 1;
-        attempt <= maxAttempts;
-        attempt++
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
       ) {
-        try {
-          console.log(
-            `Trying ${model} - attempt ${attempt}/${maxAttempts}`
-          );
+        setSupported(false);
 
-          geminiResult =
-            await callGemini(
-              model,
-              base64Audio
-            );
+        setErrorMessage(
+          "Microphone recording is not supported in this browser."
+        );
 
-          console.log(
-            `SUCCESS: ${model}`
-          );
+        return;
+      }
 
-          break;
-        } catch (error: any) {
-          lastError =
-            error;
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
 
-          console.error(
-            `FAILED: ${model} attempt ${attempt}`
-          );
+      let mimeType =
+        "audio/webm";
 
-          console.error(
-            error
-          );
+      if (
+        MediaRecorder.isTypeSupported(
+          "audio/webm;codecs=opus"
+        )
+      ) {
+        mimeType =
+          "audio/webm;codecs=opus";
+      } else if (
+        MediaRecorder.isTypeSupported(
+          "audio/webm"
+        )
+      ) {
+        mimeType =
+          "audio/webm";
+      }
 
-          const errorMessage =
-            String(
-              error?.message ||
-                ""
-            );
-
-          const status =
-            Number(
-              error?.status ||
-                0
-            );
-
-          const isTemporaryServerError =
-            status >= 500 ||
-            errorMessage.includes(
-              "500"
-            ) ||
-            errorMessage.includes(
-              "INTERNAL"
-            ) ||
-            errorMessage.includes(
-              "Internal error"
-            );
-
-          // -------------------------------------------
-          // RETRY TEMPORARY 500 ERROR
-          // -------------------------------------------
-
-          if (
-            isTemporaryServerError &&
-            attempt < maxAttempts
-          ) {
-            console.log(
-              "Temporary Gemini error. Retrying..."
-            );
-
-            await new Promise(
-              (resolve) =>
-                setTimeout(
-                  resolve,
-                  2000
-                )
-            );
-
-            continue;
+      const recorder =
+        new MediaRecorder(
+          stream,
+          {
+            mimeType,
           }
+        );
 
-          // -------------------------------------------
-          // TRY NEXT MODEL
-          // -------------------------------------------
+      audioChunksRef.current = [];
 
-          break;
+      recorder.ondataavailable = (
+        event
+      ) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(
+            event.data
+          );
         }
-      }
+      };
 
-      if (geminiResult) {
-        break;
-      }
-    }
+      recorder.onstop = () => {
+        const blob =
+          new Blob(
+            audioChunksRef.current,
+            {
+              type:
+                recorder.mimeType ||
+                "audio/webm",
+            }
+          );
 
-    // =================================================
-    // ALL MODELS FAILED
-    // =================================================
+        setAudioBlob(blob);
 
-    if (!geminiResult) {
+        stream
+          .getTracks()
+          .forEach(
+            (track) =>
+              track.stop()
+          );
+      };
+
+      mediaRecorderRef.current =
+        recorder;
+
+      recorder.start();
+
+      setIsRecording(true);
+
+    } catch (error) {
       console.error(
-        "================================="
+        "Microphone error:",
+        error
       );
 
-      console.error(
-        "ALL GEMINI MODELS FAILED"
-      );
-
-      console.error(
-        lastError
-      );
-
-      console.error(
-        "================================="
-      );
-
-      return Response.json(
-        {
-          error:
-            "Gemini speech analysis is temporarily unavailable. Please try again.",
-        },
-        {
-          status: 503,
-        }
-      );
-    }
-
-    // =================================================
-    // BUILD FINAL RESULT
-    // =================================================
-
-    const finalResult =
-      buildFinalResult(
-        geminiResult
-      );
-
-    console.log(
-      "Final analysis result:",
-      finalResult
-    );
-
-    // =================================================
-    // RETURN
-    // =================================================
-
-    return Response.json(
-      finalResult,
-      {
-        status: 200,
-      }
-    );
-
-  } catch (error: any) {
-    // =================================================
-    // FINAL ERROR
-    // =================================================
-
-    console.error(
-      "================================="
-    );
-
-    console.error(
-      "GEMINI API ERROR"
-    );
-
-    console.error(
-      error
-    );
-
-    console.error(
-      "================================="
-    );
-
-    const message =
-      String(
-        error?.message ||
-          ""
-      );
-
-    // Don't expose the entire internal
-    // Gemini stack trace to the student.
-    if (
-      message.includes(
-        "500"
-      ) ||
-      message.includes(
-        "INTERNAL"
-      ) ||
-      message.includes(
-        "Internal error"
-      )
-    ) {
-      return Response.json(
-        {
-          error:
-            "Gemini speech analysis is temporarily unavailable. Please try again.",
-        },
-        {
-          status: 503,
-        }
+      setErrorMessage(
+        "Microphone access was denied. Please allow microphone access and try again."
       );
     }
-
-    return Response.json(
-      {
-        error:
-          message ||
-          "Gemini speech analysis failed.",
-      },
-      {
-        status: 500,
-      }
-    );
   }
+
+  // =========================================
+  // STOP RECORDING
+  // =========================================
+
+  function stopRecording() {
+    const recorder =
+      mediaRecorderRef.current;
+
+    if (
+      recorder &&
+      recorder.state !== "inactive"
+    ) {
+      recorder.stop();
+    }
+
+    setIsRecording(false);
+  }
+
+  // =========================================
+  // SAVE LESSON PROGRESS
+  // =========================================
+
+  async function markLessonCompleted(
+    studentId: string,
+    currentLessonId: string
+  ) {
+    try {
+      // First check whether a progress
+      // record already exists.
+
+      const {
+        data: existingProgress,
+        error: findError,
+      } =
+        await supabase
+          .from("student_progress")
+          .select("id")
+          .eq(
+            "student_id",
+            studentId
+          )
+          .eq(
+            "lesson_id",
+            currentLessonId
+          )
+          .maybeSingle();
+
+      if (findError) {
+        console.error(
+          "Progress lookup error:",
+          findError
+        );
+
+        return false;
+      }
+
+      // =====================================
+      // UPDATE EXISTING RECORD
+      // =====================================
+
+      if (existingProgress) {
+        const {
+          error: updateError,
+        } =
+          await supabase
+            .from("student_progress")
+            .update({
+              completed: true,
+            })
+            .eq(
+              "id",
+              existingProgress.id
+            );
+
+        if (updateError) {
+          console.error(
+            "Progress update error:",
+            updateError
+          );
+
+          return false;
+        }
+
+        return true;
+      }
+
+      // =====================================
+      // CREATE NEW RECORD
+      // =====================================
+
+      const {
+        error: insertError,
+      } =
+        await supabase
+          .from("student_progress")
+          .insert({
+            student_id:
+              studentId,
+
+            lesson_id:
+              currentLessonId,
+
+            completed: true,
+          });
+
+      if (insertError) {
+        console.error(
+          "Progress insert error:",
+          insertError
+        );
+
+        return false;
+      }
+
+      return true;
+
+    } catch (error) {
+      console.error(
+        "Mark lesson completed error:",
+        error
+      );
+
+      return false;
+    }
+  }
+
+  // =========================================
+  // CHECK SPEECH ANALYSIS LIMIT
+  // =========================================
+
+  async function checkAnalysisLimit() {
+    if (!lessonId) {
+      setCheckingLimit(false);
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
+
+      if (authError || !authData.user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const { data: student, error: studentError } =
+        await supabase
+          .from("students")
+          .select("id")
+          .eq("auth_user_id", authData.user.id)
+          .single();
+
+      if (studentError || !student) {
+        setErrorMessage(
+          "Student information could not be found."
+        );
+        setCheckingLimit(false);
+        return;
+      }
+
+      const { count, error: countError } =
+        await supabase
+          .from("speech_analysis")
+          .select("id", { count: "exact", head: true })
+          .eq("student_id", student.id)
+          .eq("lesson_id", lessonId);
+
+      if (countError) {
+        console.error("Analysis count error:", countError);
+        setErrorMessage(
+          "Unable to check speech analysis attempts."
+        );
+        setCheckingLimit(false);
+        return;
+      }
+
+      setAnalysisCount(count || 0);
+    } catch (error) {
+      console.error("Check analysis limit error:", error);
+      setErrorMessage(
+        "Unable to check speech analysis attempts."
+      );
+    } finally {
+      setCheckingLimit(false);
+    }
+  }
+
+  // =========================================
+  // ANALYZE SPEECH
+  // =========================================
+
+  async function analyzeSpeech() {
+    if (
+      lessonId &&
+      analysisCount >= MAX_ANALYSES_PER_LESSON
+    ) {
+      setErrorMessage(
+        "You have used all 5 AI speech analysis attempts for this lesson."
+      );
+      return;
+    }
+
+    if (!audioBlob) {
+      setErrorMessage(
+        "Please record your speech first."
+      );
+
+      return;
+    }
+
+    setAnalyzing(true);
+    setErrorMessage("");
+    setAnalysis(null);
+    setLessonCompleted(false);
+
+    try {
+      // =====================================
+      // CHECK LOGIN
+      // =====================================
+
+      const {
+        data: authData,
+        error: authError,
+      } =
+        await supabase.auth.getUser();
+
+      if (
+        authError ||
+        !authData.user
+      ) {
+        window.location.href =
+          "/login";
+
+        return;
+      }
+
+      // =====================================
+      // GET STUDENT
+      // =====================================
+
+      const {
+        data: student,
+        error: studentError,
+      } =
+        await supabase
+          .from("students")
+          .select("id")
+          .eq(
+            "auth_user_id",
+            authData.user.id
+          )
+          .single();
+
+      if (
+        studentError ||
+        !student
+      ) {
+        throw new Error(
+          "Student information could not be found."
+        );
+      }
+
+      // =====================================
+      // SEND AUDIO TO AI
+      // =====================================
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "audio",
+        audioBlob,
+        "student-speech.webm"
+      );
+
+      const response =
+        await fetch(
+          "/api/analyze-speech",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      const responseText =
+        await response.text();
+
+      let result: any;
+
+      try {
+        result =
+          JSON.parse(
+            responseText
+          );
+      } catch {
+        console.error(
+          "Invalid AI response:",
+          responseText
+        );
+
+        throw new Error(
+          "The AI server returned an invalid response."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ||
+            "Speech analysis failed."
+        );
+      }
+
+      // =====================================
+      // NORMALIZE AI RESULT
+      // =====================================
+
+      const finalAnalysis: Analysis =
+        {
+          transcript:
+            result.transcript ||
+            "",
+
+          pronunciation_score:
+            Number(
+              result.pronunciation_score ||
+                0
+            ),
+
+          vocabulary_score:
+            Number(
+              result.vocabulary_score ||
+                0
+            ),
+
+          grammar_score:
+            Number(
+              result.grammar_score ||
+                0
+            ),
+
+          fluency_score:
+            Number(
+              result.fluency_score ||
+                0
+            ),
+
+          overall_score:
+            Number(
+              result.overall_score ||
+                0
+            ),
+
+          correct_sentence:
+            result.correct_sentence ||
+  result.corrected_sentence ||
+  "",
+
+          grammar_correction:
+            result.grammar_correction ||
+            "",
+
+          grammar_explanation:
+            result.grammar_explanation ||
+            "",
+
+          vocabulary_suggestion:
+            result.vocabulary_suggestion ||
+            "",
+
+          feedback:
+            result.feedback ||
+            "",
+        };
+
+      // =====================================
+      // SAVE SPEECH ANALYSIS
+      // =====================================
+
+      const {
+        error: saveError,
+      } =
+        await supabase
+          .from("speech_analysis")
+          .insert({
+            student_id:
+              student.id,
+
+            lesson_id:
+              lessonId || null,
+
+            transcript:
+              finalAnalysis.transcript,
+
+            pronunciation_score:
+              finalAnalysis.pronunciation_score,
+
+            vocabulary_score:
+              finalAnalysis.vocabulary_score,
+
+            grammar_score:
+              finalAnalysis.grammar_score,
+
+            fluency_score:
+              finalAnalysis.fluency_score,
+
+            overall_score:
+              finalAnalysis.overall_score,
+
+             correct_sentence:
+              finalAnalysis.correct_sentence,
+
+            grammar_correction:
+              finalAnalysis.grammar_correction,
+
+            grammar_explanation:
+              finalAnalysis.grammar_explanation,
+
+            vocabulary_suggestion:
+              finalAnalysis.vocabulary_suggestion,
+
+            feedback:
+              finalAnalysis.feedback,
+          });
+
+      if (saveError) {
+        console.error(
+          "Speech analysis save error:",
+          saveError
+        );
+
+        throw new Error(
+          "AI analysis worked, but the result could not be saved: " +
+            saveError.message
+        );
+      }
+
+      setAnalysisCount((previous) => previous + 1);
+
+      // =====================================
+      // MARK LESSON COMPLETED
+      // =====================================
+
+      if (lessonId) {
+        const completed =
+          await markLessonCompleted(
+            student.id,
+            lessonId
+          );
+
+        if (completed) {
+          setLessonCompleted(true);
+        } else {
+          console.warn(
+            "Speech saved, but lesson completion could not be saved."
+          );
+        }
+      }
+
+      // =====================================
+      // SHOW ANALYSIS
+      // =====================================
+
+      setAnalysis(
+        finalAnalysis
+      );
+
+    } catch (error: any) {
+      console.error(
+        "Speech analysis error:",
+        error
+      );
+
+      setErrorMessage(
+        error?.message ||
+          "Unable to analyze speech."
+      );
+    }
+
+    setAnalyzing(false);
+  }
+
+  // =========================================
+  // TRY AGAIN
+  // =========================================
+
+  function tryAgain() {
+    setAnalysis(null);
+    setAudioBlob(null);
+    setErrorMessage("");
+    setLessonCompleted(false);
+  }
+
+  // =========================================
+  // GO TO LESSON
+  // =========================================
+
+  function goBackToLesson() {
+    if (lessonId) {
+      window.location.href =
+        `/student/lessons/${lessonId}`;
+    } else {
+      window.location.href =
+        "/student/lessons";
+    }
+  }
+
+  // =========================================
+  // DASHBOARD
+  // =========================================
+
+  function goDashboard() {
+    window.location.href =
+      "/student";
+  }
+
+  // =========================================
+  // PAGE
+  // =========================================
+
+  return (
+    <main className="min-h-screen bg-slate-50">
+
+      {/* =================================== */}
+      {/* HEADER */}
+      {/* =================================== */}
+
+      <header className="border-b bg-white">
+
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+
+          <div>
+
+            <h1 className="text-2xl font-bold text-blue-700">
+              Communication Skills
+            </h1>
+
+            <p className="text-sm text-gray-500">
+              AI Speaking Practice
+            </p>
+
+          </div>
+
+          <div className="flex gap-3">
+
+            <button
+              onClick={
+                goBackToLesson
+              }
+              className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
+            >
+              Lesson
+            </button>
+
+            <button
+              onClick={
+                goDashboard
+              }
+              className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700"
+            >
+              Dashboard
+            </button>
+
+          </div>
+
+        </div>
+
+      </header>
+
+      {/* =================================== */}
+      {/* CONTENT */}
+      {/* =================================== */}
+
+      <section className="mx-auto max-w-4xl px-6 py-10">
+
+        {/* TITLE */}
+
+        <div className="text-center">
+
+
+          <h2 className="mt-5 text-3xl font-bold text-gray-900">
+            Speaking Practice
+          </h2>
+
+          <p className="mx-auto mt-3 max-w-2xl text-gray-500">
+            Speak naturally and receive
+            AI feedback on your English.
+          </p>
+
+        </div>
+
+        {/* ================================= */}
+        {/* SPEAKING TASK */}
+        {/* ================================= */}
+
+        <section className="mt-8 rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
+
+          <p className="text-sm font-semibold text-blue-100">
+            Speaking Task
+          </p>
+
+          <h3 className="mt-3 text-2xl font-bold">
+            Introduce Yourself
+          </h3>
+
+          <p className="mt-4 leading-7 text-blue-100">
+            Tell us your name, age,
+            where you live, and where
+            you study.
+          </p>
+
+          {lessonId && (
+            <p className="mt-4 text-xs text-blue-200">
+              Lesson connected 
+            </p>
+          )}
+
+        </section>
+
+        {/* ================================= */}
+        {/* AI ANALYSIS ATTEMPT LIMIT */}
+        {/* ================================= */}
+
+        {lessonId && !checkingLimit && (
+          <section className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-500">
+                  AI Speech Analysis
+                </p>
+                <p className="mt-1 text-lg font-bold text-gray-900">
+                  {analysisCount} / {MAX_ANALYSES_PER_LESSON} attempts used
+                </p>
+              </div>
+
+              <span
+                className={`rounded-full px-4 py-2 text-sm font-bold ${
+                  analysisCount >= MAX_ANALYSES_PER_LESSON
+                    ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
+                }`}
+              >
+                {analysisCount >= MAX_ANALYSES_PER_LESSON
+                  ? "Limit Reached"
+                  : `${MAX_ANALYSES_PER_LESSON - analysisCount} remaining`}
+              </span>
+            </div>
+
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-gray-200">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  analysisCount >= MAX_ANALYSES_PER_LESSON
+                    ? "bg-red-500"
+                    : "bg-blue-600"
+                }`}
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (analysisCount / MAX_ANALYSES_PER_LESSON) * 100
+                  )}%`,
+                }}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* ================================= */}
+        {/* ERROR */}
+        {/* ================================= */}
+
+        {errorMessage && (
+
+          <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-red-600">
+
+            <p className="font-semibold">
+              {errorMessage}
+            </p>
+
+          </div>
+
+        )}
+
+        {/* ================================= */}
+        {/* MICROPHONE */}
+        {/* ================================= */}
+
+        <section className="mt-8 rounded-2xl border bg-white p-10 text-center shadow-sm">
+
+          <div
+            className={`mx-auto flex h-32 w-32 items-center justify-center rounded-full ${
+              isRecording
+                ? "animate-pulse bg-red-100"
+                : "bg-blue-50"
+            }`}
+          >
+
+
+          </div>
+
+          {isRecording ? (
+
+            <>
+
+              <h3 className="mt-6 text-2xl font-bold text-red-600">
+                Recording...
+              </h3>
+
+              <p className="mt-2 text-gray-500">
+                Speak clearly into your microphone.
+              </p>
+
+              <button
+                onClick={
+                  stopRecording
+                }
+                className="mt-6 rounded-xl bg-red-600 px-8 py-4 font-bold text-white hover:bg-red-700"
+              >
+                 Stop Recording
+              </button>
+
+            </>
+
+          ) : (
+
+            <>
+
+              <h3 className="mt-6 text-2xl font-bold text-gray-900">
+                Ready to speak?
+              </h3>
+
+              <p className="mt-2 text-gray-500">
+                Click the button and
+                introduce yourself.
+              </p>
+
+              <button
+                onClick={
+                  startRecording
+                }
+                disabled={!supported}
+                className="mt-6 rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                 Start Recording
+              </button>
+
+            </>
+
+          )}
+
+        </section>
+
+        {/* ================================= */}
+        {/* RECORDING READY */}
+        {/* ================================= */}
+
+        {audioBlob &&
+          !isRecording &&
+          !analysis && (
+
+            <section className="mt-8 rounded-2xl border bg-white p-8 text-center shadow-sm">
+
+
+              <h3 className="mt-4 text-2xl font-bold text-gray-900">
+                Recording Ready
+              </h3>
+
+              <p className="mt-2 text-gray-500">
+                Your recording is ready
+                for AI analysis.
+              </p>
+
+              <button
+                onClick={
+                  analyzeSpeech
+                }
+                disabled={
+                  analyzing ||
+                  checkingLimit ||
+                  (!!lessonId &&
+                    analysisCount >= MAX_ANALYSES_PER_LESSON)
+                }
+                className="mt-6 rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {analyzing
+                  ? " Analyzing..."
+                  : lessonId &&
+                    analysisCount >= MAX_ANALYSES_PER_LESSON
+                  ? " 5 Attempts Used"
+                  : " Analyze My Speech"}
+              </button>
+
+            </section>
+
+          )}
+
+        {/* ================================= */}
+        {/* ANALYSIS RESULTS */}
+        {/* ================================= */}
+
+        {analysis && (
+
+          <div className="mt-8 space-y-8">
+
+            {/* LESSON COMPLETE */}
+
+            {lessonCompleted && (
+
+              <section className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
+
+
+                <h3 className="mt-4 text-3xl font-bold text-green-700">
+                  Lesson Completed!
+                </h3>
+
+                <p className="mt-3 text-green-700">
+                  Great job! Your speaking
+                  activity has been completed.
+                </p>
+
+                <div className="mt-5 inline-block rounded-xl bg-white px-6 py-4 shadow-sm">
+
+                  <p className="text-sm text-gray-500">
+                    Your Score
+                  </p>
+
+                  <p className="text-4xl font-bold text-green-600">
+                    {analysis.overall_score}%
+                  </p>
+
+                </div>
+
+              </section>
+
+            )}
+
+            {/* TRANSCRIPT */}
+
+            <section className="rounded-2xl border bg-white p-8 shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 What You Said
+              </h3>
+
+              <div className="mt-5 rounded-xl bg-slate-50 p-6">
+
+                <p className="leading-8 text-gray-700">
+                  {analysis.transcript ||
+                    "No transcript available."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* CORRECT SENTENCE */}
+
+            <section className="rounded-2xl border border-green-200 bg-white p-8 shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 Correct Sentence
+              </h3>
+
+              <div className="mt-5 rounded-xl bg-green-50 p-6">
+
+                <p className="text-lg font-semibold leading-8 text-green-800">
+                  {analysis.correct_sentence ||
+  "No correction required."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* GRAMMAR */}
+
+            <section className="rounded-2xl border bg-white p-8 shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 Grammar Correction
+              </h3>
+
+              <div className="mt-5 rounded-xl bg-yellow-50 p-6">
+
+                <p className="leading-7 text-gray-700">
+                  {analysis.grammar_correction ||
+                    "No grammar correction required."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* GRAMMAR EXPLANATION */}
+
+            <section className="rounded-2xl border bg-white p-8 shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 Grammar Explanation
+              </h3>
+
+              <div className="mt-5 rounded-xl bg-blue-50 p-6">
+
+                <p className="leading-7 text-gray-700">
+                  {analysis.grammar_explanation ||
+                    "Your sentence formation is good."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* VOCABULARY */}
+
+            <section className="rounded-2xl border bg-white p-8 shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 Vocabulary Suggestion
+              </h3>
+
+              <div className="mt-5 rounded-xl bg-purple-50 p-6">
+
+                <p className="leading-7 text-gray-700">
+                  {analysis.vocabulary_suggestion ||
+                    "Keep improving your vocabulary."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* SCORES */}
+
+            <section className="rounded-2xl border bg-white p-8 shadow-sm">
+
+              <div className="text-center">
+
+                <h3 className="text-3xl font-bold text-gray-900">
+                   AI Speech Analysis
+                </h3>
+
+                <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full bg-blue-50">
+
+                  <div>
+
+                    <p className="text-6xl font-bold text-green-600">
+                      {analysis.overall_score}
+                    </p>
+
+                    <p className="font-semibold text-gray-500">
+                      Overall Score
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <ScoreBar
+                title=" Pronunciation"
+                score={
+                  analysis.pronunciation_score
+                }
+              />
+
+              <ScoreBar
+                title=" Vocabulary"
+                score={
+                  analysis.vocabulary_score
+                }
+              />
+
+              <ScoreBar
+                title=" Grammar"
+                score={
+                  analysis.grammar_score
+                }
+              />
+
+              <ScoreBar
+                title=" Fluency"
+                score={
+                  analysis.fluency_score
+                }
+              />
+
+            </section>
+
+            {/* FEEDBACK */}
+
+            <section className="rounded-2xl bg-blue-600 p-8 text-white shadow-sm">
+
+              <h3 className="text-2xl font-bold">
+                 AI Feedback
+              </h3>
+
+              <p className="mt-5 whitespace-pre-line leading-8 text-blue-50">
+                {analysis.feedback ||
+                  "Good effort! Keep practicing."}
+              </p>
+
+            </section>
+
+            {/* ACTIONS */}
+
+            <section className="rounded-2xl border bg-white p-8 text-center shadow-sm">
+
+              <h3 className="text-2xl font-bold text-gray-900">
+                 What would you like to do?
+              </h3>
+
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+
+                <button
+                  onClick={
+                    tryAgain
+                  }
+                  className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-white hover:bg-purple-700"
+                >
+                   Try Again
+                </button>
+
+                <button
+                  onClick={
+                    goBackToLesson
+                  }
+                  className="rounded-xl bg-blue-600 px-8 py-4 font-bold text-white hover:bg-blue-700"
+                >
+                  Back to Lesson
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.location.href =
+                      "/student/progress";
+                  }}
+                  className="rounded-xl bg-green-600 px-8 py-4 font-bold text-white hover:bg-green-700"
+                >
+                   View Progress
+                </button>
+
+              </div>
+
+            </section>
+
+          </div>
+
+        )}
+
+      </section>
+
+    </main>
+  );
+}
+
+// =========================================
+// SCORE BAR
+// =========================================
+
+function ScoreBar({
+  title,
+  score,
+}: {
+  title: string;
+  score: number;
+}) {
+  const safeScore =
+    Math.min(
+      100,
+      Math.max(
+        0,
+        Number(score) || 0
+      )
+    );
+
+  return (
+    <div className="mt-7">
+
+      <div className="flex items-center justify-between">
+
+        <h4 className="font-bold text-gray-800">
+          {title}
+        </h4>
+
+        <span className="font-bold text-blue-600">
+          {safeScore}%
+        </span>
+
+      </div>
+
+      <div className="mt-3 h-4 overflow-hidden rounded-full bg-gray-200">
+
+        <div
+          className="h-full rounded-full bg-blue-600 transition-all"
+          style={{
+            width: `${safeScore}%`,
+          }}
+        />
+
+      </div>
+
+    </div>
+  );
 }
