@@ -8,6 +8,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
+// =====================================================
+// TYPES
+// =====================================================
+
 type Lesson = {
   id: string;
   grade: number;
@@ -17,212 +21,179 @@ type Lesson = {
   difficulty: string;
 };
 
+type Goal = {
+  id: string;
+  goal: string;
+  display_order: number;
+};
+
+type VocabularyWord = {
+  id: string;
+  word: string;
+  meaning: string;
+  example: string;
+  pronunciation: string;
+  display_order: number;
+};
+
+type Sentence = {
+  id: string;
+  sentence: string;
+  meaning: string;
+  usage: string;
+  display_order: number;
+};
+
+type Conversation = {
+  id: string;
+  speaker: string;
+  dialogue: string;
+  display_order: number;
+};
+
+type Question = {
+  id: string;
+  question_number: number;
+  question_text: string;
+  question_type: string;
+  correct_answer: string | null;
+};
+
 type Activity = {
   id: string;
   title: string;
   description: string;
   activity_type: string;
+  content: string | null;
+  questions: Question[];
 };
 
-type VocabularyWord = {
-  word: string;
-  meaning: string;
-  example: string;
-};
+// =====================================================
+// HELPERS
+// =====================================================
 
-type LearningContent = {
-  introduction: string;
-  examples: string[];
-};
-
-function getLessonVocabulary(
-  lesson: Lesson
-): VocabularyWord[] {
-  const title = lesson.title.toLowerCase();
-
-  // "Introducing Myself" should match "introduc" as well as "introduce".
+function speakText(text: string) {
   if (
-    title.includes("introduc") ||
-    title.includes("myself")
+    typeof window === "undefined" ||
+    !("speechSynthesis" in window)
   ) {
-    return [
-      {
-        word: "Hello",
-        meaning: "A friendly word we use when we meet someone.",
-        example: "Hello! My name is Rahul.",
-      },
-      {
-        word: "Name",
-        meaning: "The word used to identify a person.",
-        example: "My name is Rahul.",
-      },
-      {
-        word: "Age",
-        meaning: "The number of years a person has lived.",
-        example: "I am 10 years old.",
-      },
-      {
-        word: "Live",
-        meaning: "To have your home in a particular place.",
-        example: "I live in Hyderabad.",
-      },
-      {
-        word: "School",
-        meaning: "A place where children go to learn.",
-        example: "I go to school every day.",
-      },
-      {
-        word: "Student",
-        meaning: "A child or person who learns at a school.",
-        example: "I am a student.",
-      },
-      {
-        word: "Study",
-        meaning: "To learn about a subject.",
-        example: "I study in Grade 1.",
-      },
-      {
-        word: "Friend",
-        meaning: "A person you like and spend time with.",
-        example: "My friend plays with me.",
-      },
-      {
-        word: "Like",
-        meaning: "To enjoy something.",
-        example: "I like playing cricket.",
-      },
-      {
-        word: "Introduce",
-        meaning: "To tell someone who you are.",
-        example: "I will introduce myself to the class.",
-      },
-    ];
+    return;
   }
 
-  if (title.includes("family")) {
-    return [
-      {
-        word: "Family",
-        meaning: "A group of people who are related to each other.",
-        example: "I love my family.",
-      },
-      {
-        word: "Mother",
-        meaning: "A female parent.",
-        example: "My mother helps me.",
-      },
-      {
-        word: "Father",
-        meaning: "A male parent.",
-        example: "My father works hard.",
-      },
-      {
-        word: "Brother",
-        meaning: "A boy or man who has the same parents as you.",
-        example: "My brother plays with me.",
-      },
-      {
-        word: "Sister",
-        meaning: "A girl or woman who has the same parents as you.",
-        example: "My sister is kind.",
-      },
-    ];
-  }
+  window.speechSynthesis.cancel();
 
-  if (title.includes("school")) {
-    return [
-      {
-        word: "School",
-        meaning: "A place where students learn.",
-        example: "I go to school every day.",
-      },
-      {
-        word: "Classroom",
-        meaning: "A room where students learn.",
-        example: "Our classroom is clean.",
-      },
-      {
-        word: "Teacher",
-        meaning: "A person who teaches students.",
-        example: "My teacher helps me learn.",
-      },
-      {
-        word: "Book",
-        meaning: "A set of written or printed pages.",
-        example: "I read a book at school.",
-      },
-      {
-        word: "Friend",
-        meaning: "A person you like and enjoy spending time with.",
-        example: "My friend sits beside me.",
-      },
-    ];
-  }
+  const speech =
+    new SpeechSynthesisUtterance(text);
 
-  return [];
+  speech.lang = "en-US";
+  speech.rate = 0.8;
+
+  window.speechSynthesis.speak(speech);
 }
 
-function getLessonLearningContent(
-  lesson: Lesson
-): LearningContent {
-  const title = lesson.title.toLowerCase();
+function activityLabel(type: string) {
+  const value = type.toLowerCase();
 
   if (
-    title.includes("introduc") ||
-    title.includes("myself")
+    value === "listen" ||
+    value.includes("listen")
   ) {
-    return {
-      introduction:
-        "In this lesson, you will learn how to introduce yourself clearly and confidently. You will practice saying your name, age, where you live, where you study, and a little about what you like. Read the example carefully and then practice saying the sentences aloud.",
-      examples: [
-        "Hello! My name is Rahul.",
-        "I am 10 years old.",
-        "I live in Hyderabad.",
-        "I study in Grade 1.",
-        "I like playing cricket.",
-      ],
-    };
+    return "🎧 Listen & Learn";
   }
 
-  if (title.includes("family")) {
-    return {
-      introduction:
-        "In this lesson, you will learn how to talk about your family. Practice saying who is in your family and describe the people you love.",
-      examples: [
-        "This is my family.",
-        "My mother is kind.",
-        "My father works hard.",
-        "I have one brother.",
-        "I love my family.",
-      ],
-    };
+  if (
+    value === "repeat" ||
+    value.includes("repeat")
+  ) {
+    return "🔁 Repeat & Practice";
   }
 
-  if (title.includes("school")) {
-    return {
-      introduction:
-        "In this lesson, you will learn how to talk about your school, classroom, teachers, and friends.",
-      examples: [
-        "I go to school every day.",
-        "My classroom is clean.",
-        "My teacher helps me learn.",
-        "I read books at school.",
-        "I play with my friends.",
-      ],
-    };
+  if (
+    value === "conversation" ||
+    value.includes("conversation")
+  ) {
+    return "💬 Conversation Practice";
   }
 
-  return {
-    introduction:
-      lesson.description ||
-      "Read the lesson carefully and practice the examples aloud before starting the activities.",
-    examples: [],
-  };
+  if (
+    value === "challenge" ||
+    value.includes("challenge")
+  ) {
+    return "🌎 Real-Life Challenge";
+  }
+
+  if (
+    value === "review" ||
+    value.includes("review") ||
+    value.includes("practice")
+  ) {
+    return "📝 Practice / Review";
+  }
+
+  return "🎯 Activity";
 }
+
+function activityIcon(type: string) {
+  const value = type.toLowerCase();
+
+  if (
+    value === "listen" ||
+    value.includes("listen")
+  ) {
+    return "🎧";
+  }
+
+  if (
+    value === "repeat" ||
+    value.includes("repeat")
+  ) {
+    return "🔁";
+  }
+
+  if (
+    value === "conversation" ||
+    value.includes("conversation")
+  ) {
+    return "💬";
+  }
+
+  if (
+    value === "challenge" ||
+    value.includes("challenge")
+  ) {
+    return "🌎";
+  }
+
+  if (
+    value === "review" ||
+    value.includes("review") ||
+    value.includes("practice")
+  ) {
+    return "📝";
+  }
+
+  return "🎯";
+}
+
+// =====================================================
+// PAGE
+// =====================================================
 
 export default function StudentLessonPage() {
   const [lesson, setLesson] =
     useState<Lesson | null>(null);
+
+  const [goals, setGoals] =
+    useState<Goal[]>([]);
+
+  const [vocabulary, setVocabulary] =
+    useState<VocabularyWord[]>([]);
+
+  const [sentences, setSentences] =
+    useState<Sentence[]>([]);
+
+  const [conversations, setConversations] =
+    useState<Conversation[]>([]);
 
   const [activities, setActivities] =
     useState<Activity[]>([]);
@@ -233,18 +204,25 @@ export default function StudentLessonPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  const [openActivity, setOpenActivity] =
+    useState<string | null>(null);
+
   useEffect(() => {
     loadLesson();
   }, []);
+
+  // ===================================================
+  // LOAD EVERYTHING
+  // ===================================================
 
   async function loadLesson() {
     try {
       setLoading(true);
       setErrorMessage("");
 
-      // =========================================
-      // GET LESSON ID FROM URL
-      // =========================================
+      // -----------------------------------------------
+      // GET LESSON ID
+      // -----------------------------------------------
 
       const parts =
         window.location.pathname.split("/");
@@ -262,27 +240,29 @@ export default function StudentLessonPage() {
       }
 
       console.log(
-        "Loading lesson:",
+        "Loading student lesson:",
         lessonId
       );
 
-      // =========================================
+      // -----------------------------------------------
       // GET LESSON
-      // =========================================
+      // -----------------------------------------------
 
       const {
         data: lessonData,
         error: lessonError,
       } = await supabase
         .from("lessons")
-        .select(`
+        .select(
+          `
           id,
           grade,
           lesson_number,
           title,
           description,
           difficulty
-        `)
+          `
+        )
         .eq("id", lessonId)
         .single();
 
@@ -305,25 +285,157 @@ export default function StudentLessonPage() {
 
       setLesson(lessonData);
 
-      // =========================================
+      // -----------------------------------------------
+      // GET LEARNING GOALS
+      // -----------------------------------------------
+
+      const {
+        data: goalData,
+        error: goalError,
+      } = await supabase
+        .from("lesson_goals")
+        .select(
+          `
+          id,
+          goal,
+          display_order
+          `
+        )
+        .eq("lesson_id", lessonId)
+        .order("display_order", {
+          ascending: true,
+        });
+
+      if (goalError) {
+        console.error(
+          "Goals error:",
+          goalError
+        );
+      }
+
+      setGoals(goalData || []);
+
+      // -----------------------------------------------
+      // GET VOCABULARY
+      // -----------------------------------------------
+
+      const {
+        data: vocabularyData,
+        error: vocabularyError,
+      } = await supabase
+        .from("lesson_vocabulary")
+        .select(
+          `
+          id,
+          word,
+          meaning,
+          example,
+          pronunciation,
+          display_order
+          `
+        )
+        .eq("lesson_id", lessonId)
+        .order("display_order", {
+          ascending: true,
+        });
+
+      if (vocabularyError) {
+        console.error(
+          "Vocabulary error:",
+          vocabularyError
+        );
+      }
+
+      setVocabulary(
+        vocabularyData || []
+      );
+
+      // -----------------------------------------------
+      // GET USEFUL SENTENCES
+      // -----------------------------------------------
+
+      const {
+        data: sentenceData,
+        error: sentenceError,
+      } = await supabase
+        .from("lesson_sentences")
+        .select(
+          `
+          id,
+          sentence,
+          meaning,
+          usage,
+          display_order
+          `
+        )
+        .eq("lesson_id", lessonId)
+        .order("display_order", {
+          ascending: true,
+        });
+
+      if (sentenceError) {
+        console.error(
+          "Sentences error:",
+          sentenceError
+        );
+      }
+
+      setSentences(
+        sentenceData || []
+      );
+
+      // -----------------------------------------------
+      // GET CONVERSATION
+      // -----------------------------------------------
+
+      const {
+        data: conversationData,
+        error: conversationError,
+      } = await supabase
+        .from("lesson_conversations")
+        .select(
+          `
+          id,
+          speaker,
+          dialogue,
+          display_order
+          `
+        )
+        .eq("lesson_id", lessonId)
+        .order("display_order", {
+          ascending: true,
+        });
+
+      if (conversationError) {
+        console.error(
+          "Conversation error:",
+          conversationError
+        );
+      }
+
+      setConversations(
+        conversationData || []
+      );
+
+      // -----------------------------------------------
       // GET ACTIVITIES
-      // =========================================
+      // -----------------------------------------------
 
       const {
         data: activityData,
         error: activityError,
       } = await supabase
         .from("activities")
-        .select(`
+        .select(
+          `
           id,
           title,
           description,
-          activity_type
-        `)
-        .eq(
-          "lesson_id",
-          lessonId
+          activity_type,
+          content
+          `
         )
+        .eq("lesson_id", lessonId)
         .order("created_at", {
           ascending: true,
         });
@@ -336,16 +448,121 @@ export default function StudentLessonPage() {
 
         setActivities([]);
       } else {
+        const loadedActivities =
+          activityData || [];
+
+        // ---------------------------------------------
+        // GET ACTIVITY QUESTIONS
+        // ---------------------------------------------
+
+        const activityIds =
+          loadedActivities.map(
+            (activity) =>
+              activity.id
+          );
+
+        let questionData: any[] = [];
+
+        if (
+          activityIds.length > 0
+        ) {
+          const {
+            data,
+            error,
+          } = await supabase
+            .from(
+              "activity_questions"
+            )
+            .select(
+              `
+              id,
+              activity_id,
+              question_number,
+              question_text,
+              question_type,
+              correct_answer
+              `
+            )
+            .in(
+              "activity_id",
+              activityIds
+            )
+            .order(
+              "question_number",
+              {
+                ascending: true,
+              }
+            );
+
+          if (error) {
+            console.error(
+              "Activity questions error:",
+              error
+            );
+          } else {
+            questionData =
+              data || [];
+          }
+        }
+
+        // ---------------------------------------------
+        // COMBINE ACTIVITIES + QUESTIONS
+        // ---------------------------------------------
+
+        const combinedActivities =
+          loadedActivities.map(
+            (activity) => ({
+              id: activity.id,
+              title:
+                activity.title ||
+                "Activity",
+              description:
+                activity.description ||
+                "",
+              activity_type:
+                activity.activity_type ||
+                "activity",
+              content:
+                activity.content ||
+                "",
+              questions:
+                questionData.filter(
+                  (question) =>
+                    question.activity_id ===
+                    activity.id
+                ),
+            })
+          );
+
         setActivities(
-          activityData || []
+          combinedActivities
         );
       }
 
-      setLoading(false);
+      console.log(
+        "Student lesson loaded:",
+        {
+          lesson: lessonData,
+          goals:
+            goalData?.length || 0,
+          vocabulary:
+            vocabularyData?.length ||
+            0,
+          sentences:
+            sentenceData?.length ||
+            0,
+          conversations:
+            conversationData?.length ||
+            0,
+          activities:
+            activityData?.length || 0,
+        }
+      );
 
+      setLoading(false);
     } catch (error) {
       console.error(
-        "Unexpected error:",
+        "Unexpected lesson error:",
         error
       );
 
@@ -357,9 +574,9 @@ export default function StudentLessonPage() {
     }
   }
 
-  // =========================================
-  // OPEN SPEAKING PRACTICE
-  // =========================================
+  // ===================================================
+  // SPEAKING PRACTICE
+  // ===================================================
 
   function startSpeaking() {
     if (!lesson) {
@@ -372,16 +589,14 @@ export default function StudentLessonPage() {
       )}`;
   }
 
-  // =========================================
+  // ===================================================
   // LOADING
-  // =========================================
+  // ===================================================
 
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50">
-
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-
           <div
             className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
             aria-hidden="true"
@@ -394,16 +609,14 @@ export default function StudentLessonPage() {
           <p className="mt-2 text-gray-500">
             Please wait.
           </p>
-
         </div>
-
       </main>
     );
   }
 
-  // =========================================
+  // ===================================================
   // ERROR
-  // =========================================
+  // ===================================================
 
   if (
     errorMessage ||
@@ -411,13 +624,10 @@ export default function StudentLessonPage() {
   ) {
     return (
       <main className="min-h-screen bg-slate-50">
-
         <div className="mx-auto max-w-4xl px-6 py-20">
-
           <div className="rounded-2xl border border-red-200 bg-white p-10 text-center shadow-sm">
-
             <div className="text-6xl">
-            
+              ⚠️
             </div>
 
             <h2 className="mt-5 text-2xl font-bold text-red-600">
@@ -430,6 +640,7 @@ export default function StudentLessonPage() {
             </p>
 
             <button
+              type="button"
               onClick={() => {
                 window.location.href =
                   "/student/lessons";
@@ -438,30 +649,25 @@ export default function StudentLessonPage() {
             >
               Back to Lessons
             </button>
-
           </div>
-
         </div>
-
       </main>
     );
   }
 
-  // =========================================
-  // LESSON PAGE
-  // =========================================
+  // ===================================================
+  // PAGE
+  // ===================================================
 
   return (
     <main className="min-h-screen bg-slate-50">
-
+      {/* ================================================= */}
       {/* HEADER */}
+      {/* ================================================= */}
 
       <header className="border-b bg-white">
-
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-
           <div>
-
             <h1 className="text-2xl font-bold text-blue-700">
               Communication Skills
             </h1>
@@ -469,49 +675,45 @@ export default function StudentLessonPage() {
             <p className="text-sm text-gray-500">
               Student Lesson
             </p>
-
           </div>
 
           <button
+            type="button"
             onClick={() => {
               window.location.href =
                 "/student/lessons";
             }}
             className="rounded-lg bg-gray-100 px-5 py-2 font-semibold text-gray-700 hover:bg-gray-200"
           >
-             Back to Lessons
+            ← Back to Lessons
           </button>
-
         </div>
-
       </header>
 
+      {/* ================================================= */}
       {/* CONTENT */}
+      {/* ================================================= */}
 
       <section className="mx-auto max-w-5xl px-6 py-10">
-
-        {/* ================================= */}
+        {/* ================================================= */}
         {/* LESSON HEADER */}
-        {/* ================================= */}
+        {/* ================================================= */}
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-
           <div className="bg-blue-600 p-8 text-white">
-
             <div className="flex flex-wrap items-center gap-3">
-
               <span className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold">
                 Grade {lesson.grade}
               </span>
 
               <span className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold">
-                Lesson {lesson.lesson_number}
+                Lesson{" "}
+                {lesson.lesson_number}
               </span>
 
               <span className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold capitalize">
                 {lesson.difficulty}
               </span>
-
             </div>
 
             <h2 className="mt-6 text-4xl font-bold">
@@ -521,21 +723,65 @@ export default function StudentLessonPage() {
             <p className="mt-4 max-w-3xl text-lg leading-8 text-blue-100">
               {lesson.description}
             </p>
-
           </div>
-
         </div>
 
-        {/* ================================= */}
-        {/* LEARNING SECTION */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* LEARNING GOALS */}
+        {/* ================================================= */}
 
         <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
           <div className="flex items-center gap-3">
-            <div
-              className="h-10 w-10 shrink-0 rounded-xl bg-blue-100"
-              aria-hidden="true"
-            />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">
+              🎯
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">
+                Learning Goals
+              </h3>
+
+              <p className="mt-1 text-gray-500">
+                What you will learn in this lesson.
+              </p>
+            </div>
+          </div>
+
+          {goals.length === 0 ? (
+            <div className="mt-6 rounded-xl bg-slate-50 p-5 text-gray-500">
+              Learning goals will be added soon.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {goals.map(
+                (goal, index) => (
+                  <div
+                    key={goal.id}
+                    className="flex items-start gap-4 rounded-xl border bg-slate-50 p-4"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                      {index + 1}
+                    </span>
+
+                    <p className="pt-1 leading-7 text-gray-700">
+                      {goal.goal}
+                    </p>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ================================================= */}
+        {/* LEARN */}
+        {/* ================================================= */}
+
+        <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">
+              📖
+            </div>
 
             <div>
               <h3 className="text-2xl font-bold text-gray-900">
@@ -543,7 +789,7 @@ export default function StudentLessonPage() {
               </h3>
 
               <p className="mt-1 text-gray-500">
-                Read and practice the lesson before starting the activities.
+                Read and understand the lesson.
               </p>
             </div>
           </div>
@@ -554,82 +800,22 @@ export default function StudentLessonPage() {
             </h4>
 
             <p className="mt-4 text-base leading-8 text-gray-700">
-              {getLessonLearningContent(lesson).introduction}
+              {lesson.description ||
+                "Read the lesson carefully and practise the examples."}
             </p>
-          </div>
-
-          <div className="mt-6">
-            <h4 className="text-lg font-bold text-gray-900">
-              Example Sentences
-            </h4>
-
-            {getLessonLearningContent(lesson).examples.length === 0 ? (
-              <div className="mt-4 rounded-xl bg-slate-50 p-5">
-                <p className="text-gray-500">
-                  More examples will be added to this lesson soon.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {getLessonLearningContent(lesson).examples.map(
-                  (example, index) => (
-                    <div
-                      key={`${lesson.id}-example-${index}`}
-                      className="flex items-start gap-3 rounded-xl border bg-slate-50 p-4"
-                    >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                        {index + 1}
-                      </span>
-
-                      <p className="leading-7 text-gray-700">
-                        {example}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if ("speechSynthesis" in window) {
-                            window.speechSynthesis.cancel();
-
-                            const speech =
-                              new SpeechSynthesisUtterance(example);
-
-                            speech.lang = "en-US";
-                            speech.rate = 0.8;
-
-                            window.speechSynthesis.speak(speech);
-                          }
-                        }}
-                        className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm hover:bg-blue-100"
-                        title="Listen to sentence"
-                      >
-                        <span
-                          className="relative block h-4 w-4"
-                          aria-hidden="true"
-                        >
-                          <span className="absolute left-0 top-1 h-2.5 w-1.5 rounded-sm bg-blue-600" />
-                          <span className="absolute left-1.5 top-0.5 h-3.5 w-2.5 rounded-r-full border-2 border-l-0 border-blue-600" />
-                        </span>
-                      </button>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
           </div>
         </section>
 
-        {/* ================================= */}
+        {/* ================================================= */}
         {/* VOCABULARY */}
-        {/* ================================= */}
+        {/* ================================================= */}
 
         <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div
-                className="h-10 w-10 shrink-0 rounded-xl bg-purple-100"
-                aria-hidden="true"
-              />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-xl">
+                📚
+              </div>
 
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -643,19 +829,13 @@ export default function StudentLessonPage() {
             </div>
 
             <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700">
-              {getLessonVocabulary(lesson).length} words
+              {vocabulary.length}{" "}
+              words
             </span>
           </div>
 
-          <div className="mt-4 rounded-xl bg-purple-50 p-4">
-            <p className="text-sm leading-6 text-purple-800">
-              These words belong to <strong>{lesson.title}</strong>.
-              Learn the meaning, listen to the pronunciation, and practice
-              the example sentence.
-            </p>
-          </div>
-
-          {getLessonVocabulary(lesson).length === 0 ? (
+          {vocabulary.length ===
+          0 ? (
             <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center">
               <p className="text-gray-500">
                 Vocabulary for this lesson will be added soon.
@@ -663,251 +843,539 @@ export default function StudentLessonPage() {
             </div>
           ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {getLessonVocabulary(lesson).map((item) => (
-                <div
-                  key={item.word}
-                  className="rounded-xl border bg-slate-50 p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="text-xl font-bold text-gray-900">
-                        {item.word}
-                      </h4>
+              {vocabulary.map(
+                (item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border bg-slate-50 p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-xl font-bold text-gray-900">
+                          {item.word}
+                        </h4>
 
-                      <p className="mt-2 text-gray-600">
-                        {item.meaning}
-                      </p>
+                        {item.pronunciation && (
+                          <p className="mt-1 text-sm font-medium text-purple-600">
+                            /{" "}
+                            {
+                              item.pronunciation
+                            }{" "}
+                            /
+                          </p>
+                        )}
+
+                        <p className="mt-2 text-gray-600">
+                          {item.meaning}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          speakText(
+                            item.word
+                          )
+                        }
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg hover:bg-blue-200"
+                        title={`Listen to ${item.word}`}
+                      >
+                        🔊
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if ("speechSynthesis" in window) {
-                          window.speechSynthesis.cancel();
+                    {item.example && (
+                      <div className="mt-4 rounded-lg bg-white p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                          Example
+                        </p>
 
-                          const speech =
-                            new SpeechSynthesisUtterance(item.word);
+                        <p className="mt-1 text-gray-700">
+                          “
+                          {
+                            item.example
+                          }
+                          ”
+                        </p>
 
-                          speech.lang = "en-US";
-                          speech.rate = 0.8;
-
-                          window.speechSynthesis.speak(speech);
-                        }
-                      }}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg hover:bg-blue-200"
-                      title={`Listen to ${item.word}`}
-                    >
-                      
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            speakText(
+                              item.example
+                            )
+                          }
+                          className="mt-3 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                        >
+                          🔊 Listen to Example
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  <div className="mt-4 rounded-lg bg-white p-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                      Example
-                    </p>
-
-                    <p className="mt-1 text-gray-700">
-                      “{item.example}”
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if ("speechSynthesis" in window) {
-                        window.speechSynthesis.cancel();
-
-                        const speech =
-                          new SpeechSynthesisUtterance(item.example);
-
-                        speech.lang = "en-US";
-                        speech.rate = 0.8;
-
-                        window.speechSynthesis.speak(speech);
-                      }
-                    }}
-                    className="mt-3 w-full rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                  >
-                     Listen to Example
-                  </button>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
         </section>
 
-        {/* ================================= */}
-        {/* SPEAKING PRACTICE */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* USEFUL SENTENCES */}
+        {/* ================================================= */}
 
         <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
-
           <div className="flex items-center gap-3">
-
-            <div
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100"
-              aria-hidden="true"
-            >
-              <div className="h-5 w-3 rounded-full border-2 border-blue-600" />
-              <div className="absolute bottom-2 h-2.5 w-0.5 rounded-full bg-blue-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-xl">
+              💬
             </div>
 
             <div>
+              <h3 className="text-2xl font-bold text-gray-900">
+                Useful Sentences
+              </h3>
 
+              <p className="mt-1 text-gray-500">
+                English sentences you can use in real life.
+              </p>
+            </div>
+          </div>
+
+          {sentences.length ===
+          0 ? (
+            <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center text-gray-500">
+              Useful sentences will be added soon.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {sentences.map(
+                (item, index) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border bg-slate-50 p-5"
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 font-bold text-white">
+                        {index + 1}
+                      </span>
+
+                      <div className="flex-1">
+                        <div className="flex items-start gap-3">
+                          <p className="text-lg font-bold leading-7 text-gray-900">
+                            “
+                            {
+                              item.sentence
+                            }
+                            ”
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              speakText(
+                                item.sentence
+                              )
+                            }
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white shadow-sm hover:bg-orange-50"
+                            title="Listen"
+                          >
+                            🔊
+                          </button>
+                        </div>
+
+                        {item.meaning && (
+                          <p className="mt-3 text-gray-600">
+                            <strong>
+                              Meaning:
+                            </strong>{" "}
+                            {
+                              item.meaning
+                            }
+                          </p>
+                        )}
+
+                        {item.usage && (
+                          <p className="mt-2 text-gray-600">
+                            <strong>
+                              When to use:
+                            </strong>{" "}
+                            {
+                              item.usage
+                            }
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ================================================= */}
+        {/* REAL-LIFE CONVERSATION */}
+        {/* ================================================= */}
+
+        <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-xl">
+              🗣
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">
+                Real-Life Conversation
+              </h3>
+
+              <p className="mt-1 text-gray-500">
+                Read and practise the conversation with a partner.
+              </p>
+            </div>
+          </div>
+
+          {conversations.length ===
+          0 ? (
+            <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center text-gray-500">
+              Conversation content will be added soon.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {conversations.map(
+                (item, index) => {
+                  const isStudent =
+                    item.speaker
+                      .toLowerCase()
+                      .includes(
+                        "student"
+                      ) ||
+                    item.speaker
+                      .toLowerCase()
+                      .includes(
+                        "child"
+                      );
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex ${
+                        isStudent
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-2xl rounded-2xl p-5 ${
+                          isStudent
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-gray-900"
+                        }`}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-4">
+                          <span
+                            className={`text-sm font-bold ${
+                              isStudent
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {item.speaker ||
+                              `Speaker ${
+                                index +
+                                1
+                              }`}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              speakText(
+                                item.dialogue
+                              )
+                            }
+                            className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                              isStudent
+                                ? "bg-white/20 hover:bg-white/30"
+                                : "bg-white hover:bg-gray-200"
+                            }`}
+                            title="Listen"
+                          >
+                            🔊
+                          </button>
+                        </div>
+
+                        <p className="text-lg leading-8">
+                          {item.dialogue}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ================================================= */}
+        {/* ACTIVITIES */}
+        {/* ================================================= */}
+
+        <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-xl">
+              🎯
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">
+                Activities
+              </h3>
+
+              <p className="mt-1 text-gray-500">
+                Practise what you learned.
+              </p>
+            </div>
+          </div>
+
+          {activities.length ===
+          0 ? (
+            <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center text-gray-500">
+              Activities for this lesson will be added soon.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              {activities.map(
+                (
+                  activity,
+                  index
+                ) => {
+                  const isOpen =
+                    openActivity ===
+                    activity.id;
+
+                  return (
+                    <div
+                      key={
+                        activity.id
+                      }
+                      className="overflow-hidden rounded-2xl border bg-slate-50"
+                    >
+                      {/* ACTIVITY HEADER */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenActivity(
+                            isOpen
+                              ? null
+                              : activity.id
+                          )
+                        }
+                        className="flex w-full items-center justify-between gap-4 p-5 text-left hover:bg-white"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100 text-2xl">
+                            {activityIcon(
+                              activity.activity_type
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-bold text-green-700">
+                              Activity{" "}
+                              {index +
+                                1}
+                            </p>
+
+                            <h4 className="text-xl font-bold text-gray-900">
+                              {
+                                activity.title
+                              }
+                            </h4>
+
+                            <p className="mt-1 text-sm font-semibold text-gray-500">
+                              {activityLabel(
+                                activity.activity_type
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="text-2xl text-gray-400">
+                          {isOpen
+                            ? "−"
+                            : "+"}
+                        </span>
+                      </button>
+
+                      {/* ACTIVITY CONTENT */}
+
+                      {isOpen && (
+                        <div className="border-t bg-white p-6">
+                          {activity.description && (
+                            <div className="rounded-xl bg-green-50 p-5">
+                              <p className="font-semibold leading-7 text-green-900">
+                                {
+                                  activity.description
+                                }
+                              </p>
+                            </div>
+                          )}
+
+                          {activity.content && (
+                            <div className="mt-5">
+                              <h5 className="mb-3 text-lg font-bold text-gray-900">
+                                Activity
+                                Content
+                              </h5>
+
+                              <div className="rounded-xl border bg-slate-50 p-5">
+                                {activity.content
+                                  .split(
+                                    "\n"
+                                  )
+                                  .map(
+                                    (
+                                      line,
+                                      lineIndex
+                                    ) => (
+                                      <p
+                                        key={`${activity.id}-content-${lineIndex}`}
+                                        className="leading-8 text-gray-700"
+                                      >
+                                        {line ||
+                                          "\u00A0"}
+                                      </p>
+                                    )
+                                  )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* QUESTIONS */}
+
+                          {activity
+                            .questions
+                            .length >
+                            0 && (
+                            <div className="mt-6">
+                              <h5 className="mb-4 text-lg font-bold text-gray-900">
+                                📝 Practice
+                              </h5>
+
+                              <div className="space-y-4">
+                                {activity.questions.map(
+                                  (
+                                    question,
+                                    questionIndex
+                                  ) => (
+                                    <div
+                                      key={
+                                        question.id
+                                      }
+                                      className="rounded-xl border bg-slate-50 p-5"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                                          {questionIndex +
+                                            1}
+                                        </span>
+
+                                        <div className="flex-1">
+                                          <p className="font-semibold leading-7 text-gray-900">
+                                            {
+                                              question.question_text
+                                            }
+                                          </p>
+
+                                          {question.question_type && (
+                                            <span className="mt-3 inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold capitalize text-gray-500">
+                                              {question.question_type.replace(
+                                                /_/g,
+                                                " "
+                                              )}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ================================================= */}
+        {/* SPEAKING PRACTICE */}
+        {/* ================================================= */}
+
+        <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">
+              🎙️
+            </div>
+
+            <div>
               <h3 className="text-2xl font-bold text-gray-900">
                 Speaking Practice
               </h3>
 
               <p className="mt-1 text-gray-500">
-                Practice speaking about this lesson.
+                Practise speaking about this lesson.
               </p>
-
             </div>
-
           </div>
 
           <div className="mt-6 rounded-xl bg-blue-50 p-6">
-
             <h4 className="text-lg font-bold text-blue-700">
-              Introduce Yourself
+              Practise Speaking
             </h4>
 
             <p className="mt-2 leading-7 text-gray-600">
-              Tell us your name, age,
-              where you live, and where
-              you study.
+              Speak about the topic you learned in
+              this lesson. Try to use the new
+              vocabulary and useful sentences.
             </p>
 
             <button
+              type="button"
               onClick={
                 startSpeaking
               }
               className="mt-5 rounded-xl bg-blue-600 px-7 py-3 font-bold text-white hover:bg-blue-700"
             >
-              Start Speaking
+              🎙️ Start Speaking
             </button>
-
           </div>
-
         </section>
 
-        {/* ================================= */}
-        {/* CLASSROOM ACTIVITIES */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* COMPLETE */}
+        {/* ================================================= */}
 
-        <section className="mt-8 rounded-2xl border bg-white p-8 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div
-              className="h-10 w-10 shrink-0 rounded-xl bg-green-100"
-              aria-hidden="true"
-            />
-
-            <div>
-
-              <h3 className="text-2xl font-bold text-gray-900">
-                Classroom Activities
-              </h3>
-
-              <p className="mt-1 text-gray-500">
-                Fun offline activities to practice what you learned.
-              </p>
-
-            </div>
-
+        <section className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
+          <div className="text-5xl">
+            🎉
           </div>
 
-          <div className="mt-4 rounded-xl bg-green-50 p-4">
+          <h3 className="mt-4 text-2xl font-bold text-green-800">
+            Great Job!
+          </h3>
 
-            <p className="text-sm leading-6 text-green-800">
-              These activities are for the teacher and students to do
-              together in the classroom. No phone or computer is required.
-            </p>
-
-          </div>
-
-          <div className="mt-6 space-y-4">
-
-            {[
-              {
-                number: 1,
-                title: "Role Play",
-                description:
-                  "Work in pairs. One student introduces themselves and the other student asks simple questions about their name, age, school and where they live.",
-                time: "10 minutes",
-              },
-              {
-                number: 2,
-                title: "Pair Introduction",
-                description:
-                  "Talk to a partner for one minute. Then introduce your partner to the class using the sentences learned in this lesson.",
-                time: "10 minutes",
-              },
-              {
-                number: 3,
-                title: "Group Discussion",
-                description:
-                  "Form small groups and discuss the lesson topic. Each student should get a chance to speak and share at least two sentences.",
-                time: "10–15 minutes",
-              },
-              {
-                number: 4,
-                title: "Class Introduction Circle",
-                description:
-                  "Students sit in a circle. Each student says their name, age, school and one thing they like.",
-                time: "10 minutes",
-              },
-            ].map((activity) => (
-
-              <div
-                key={activity.number}
-                className="rounded-xl border bg-slate-50 p-5"
-              >
-
-                <div className="flex items-start gap-4">
-
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 font-bold text-green-700">
-                    {activity.number}
-                  </div>
-
-                  <div className="flex-1">
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
-                      <h4 className="text-lg font-bold text-gray-900">
-                        {activity.title}
-                      </h4>
-
-                      <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-500">
-                        {activity.time}
-                      </span>
-
-                    </div>
-
-                    <p className="mt-2 leading-7 text-gray-600">
-                      {activity.description}
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            ))}
-
-          </div>
-
+          <p className="mx-auto mt-2 max-w-2xl leading-7 text-green-700">
+            Read the lesson, learn the vocabulary,
+            practise the sentences, try the
+            conversation and complete the activities.
+          </p>
         </section>
-
-        {/* ================================= */}
-        {/* COMPLETE LESSON */}
-        {/* ================================= */}
-
-
       </section>
-
     </main>
   );
 }

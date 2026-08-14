@@ -937,7 +937,7 @@ export default function TeacherDashboard() {
               }
               className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100"
             >
-              View All Lessons →
+              View All Grades →
             </button>
 
           </div>
